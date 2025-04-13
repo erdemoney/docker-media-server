@@ -5,8 +5,8 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - external 
-      - internal 
+      - external
+      - internal
     ports:
       - 80:80
       - 81:81
@@ -38,10 +38,8 @@ services:
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=fromnowhere.net"
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.fromnowhere.net"
       - "traefik.http.routers.traefik-secure.service=api@internal"
-
 networks:
   internal:
     external: true
   external:
     external: true
-
