@@ -1,10 +1,3 @@
-environment:
-  - PUID=${ENV_PUID}
-  - PGID=${ENV_PGID}
-
-volumes:
-  - /etc/localtime:/etc/localtime:ro
-
 services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
@@ -14,7 +7,11 @@ services:
     networks:
       - external
       - internal
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/jellyfin/config:/config
       - ${SERVICES_DIR}/jellyfin/transcodes:/transcodes
       - ${DATA_DIR}/media:/storage/media
@@ -43,7 +40,10 @@ services:
       - internal
     environment:
       - LOG_LEVEL=debug
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/jellyseerr/config:/app/config
     labels:
       - "traefik.enable=true"
@@ -58,9 +58,13 @@ services:
     security_opt:
       - no-new-privileges:true
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/radarr:/config
       - ${DATA_DIR}/media/movies:/storage/media/movies
       - ${DATA_DIR}/downloads:/storage/downloads
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.entrypoints=https"
@@ -73,7 +77,11 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/sonarr:/config
       - ${DATA_DIR}/media/tv:/storage/media/tv
       - ${DATA_DIR}/downloads:/storage/downloads
@@ -89,7 +97,11 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/prowlarr:/config
     labels:
       - "traefik.enable=true"
@@ -105,6 +117,7 @@ services:
       - no-new-privileges:true
     user: ${ENV_PUID}:${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/recyclarr/config:/config
 
   sabnzbd:
@@ -112,7 +125,11 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${SERVICES_DIR}/sabnzbd/config:/config
       - ${DATA_DIR}/downloads/usenet:/storage/downloads/usenet
     labels:
