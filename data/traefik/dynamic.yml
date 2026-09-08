@@ -1,0 +1,48 @@
+http:
+  middlewares:
+    secHeaders:
+      headers:
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer"
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+        customRequestHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 50
+
+    dashboardAcl:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/16"
+          - "172.16.0.0/12"
+          - "10.0.0.0/8"
+          - "100.64.0.0/10"
+
+  serversTransports:
+    truenas-insecure:
+      insecureSkipVerify: true
+
+  services:
+    truenas:
+      loadBalancer:
+        serversTransport: truenas-insecure@file
+        servers:
+          - url: "https://host.docker.internal:8443"
+
+  routers:
+    truenas:
+      rule: "Host(`nas.fromnowhere.net`)"
+      entryPoints:
+        - https
+      service: truenas@file
+      tls:
+        certResolver: cloudflare

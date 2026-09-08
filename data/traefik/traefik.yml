@@ -2,6 +2,8 @@ api:
   dashboard: true
   insecure: false
 
+ping: {}
+
 entryPoints:
   http:
     address: ":80"
@@ -13,24 +15,28 @@ entryPoints:
           permanent: true
   https:
     address: ":443"
-  external-http:
-    address: ":81"
     http:
-      redirections:
-        entryPoint:
-          to: external-https
-          scheme: https
-          permanent: true
-  external-https:
-    address: ":444"
+      middlewares:
+        - secHeaders@file
+        - rateLimit@file
 
-serversTransport:
-  insecureSkipVerify: true
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
 
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
+    network: "internal"
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
 
 certificatesResolvers:
   cloudflare:

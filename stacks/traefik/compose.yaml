@@ -1,6 +1,6 @@
 services:
   traefik:
-    image: traefik:v3.0
+    image: traefik:v3.7.13
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -9,35 +9,42 @@ services:
       - internal
     ports:
       - 80:80
-      - 81:81
       - 443:443
-      - 444:444
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
       TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /mnt/storage/docker/data/traefik/traefik.yml:/traefik.yml:ro
-      - /mnt/storage/docker/data/traefik/acme.json:/acme.json
-      # - ./data/config.yml:/config.yml:ro
+      - ${SERVICES_DIR}/traefik/traefik.yml:/traefik.yml:ro
+      - ${SERVICES_DIR}/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ${SERVICES_DIR}/traefik/acme.json:/acme.json
+      - ${SERVICES_DIR}/traefik/logs:/var/log/traefik
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.fromnowhere.net`)"
+      - "traefik.http.routers.traefik.rule=Host(`${SUB_DOMAIN_TRAEFIK}.${DOMAIN}`)"
       - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_CREDENTIALS}"
       - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
       - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
       - "traefik.http.routers.traefik-secure.entrypoints=https"
-      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.fromnowhere.net`)"
-      - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - "traefik.http.routers.traefik-secure.rule=Host(`${SUB_DOMAIN_TRAEFIK}.${DOMAIN}`)"
+      - "traefik.http.routers.traefik-secure.middlewares=dashboardAcl@file,traefik-auth"
       - "traefik.http.routers.traefik-secure.tls=true"
       - "traefik.http.routers.traefik-secure.tls.certresolver=cloudflare"
       - "traefik.http.routers.traefik-secure.tls.domains[0].main=fromnowhere.net"
       - "traefik.http.routers.traefik-secure.tls.domains[0].sans=*.fromnowhere.net"
       - "traefik.http.routers.traefik-secure.service=api@internal"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 networks:
   internal:
     external: true
