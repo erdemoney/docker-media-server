@@ -26,13 +26,6 @@ services:
       - ${SERVICES_DIR}/jellyfin/config:/config
     tmpfs:
       - /transcodes
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyfin.entrypoints=https"
