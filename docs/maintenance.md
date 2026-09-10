@@ -156,10 +156,10 @@ if it lives outside the repo (see [The \*arrs](arrs)).
 
 These are the outstanding items from first bring-up — do them once, then forget:
 
-- **Jellyfin media access** — the compose mounts only `/config`. To serve libraries (and let the
-  *arrs import into them), bind Decypharr's FUSE mount into `jellyfin` *and\* `sonarr`/`radarr`
-  (`- /mnt/decypharr:/mnt/decypharr`), then point root folders at subpaths of it and add the
-  libraries in the Jellyfin UI (see [The \*arrs](arrs)).
+- **Jellyfin libraries** — Decypharr's FUSE mount is already bound into `jellyfin`, `sonarr`,
+  `radarr`, and `bazarr` (`- /mnt/decypharr:/mnt/decypharr:rslave`), so all that's left is adding
+  the libraries in the Jellyfin UI pointing at subpaths of it (see [The \*arrs](arrs)). Check
+  `/mnt` is a shared mount on the host or nothing will propagate (see [Decypharr](decypharr)).
 - **Root folders** in Radarr/Sonarr must point at paths the containers can actually reach.
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
   working `CF_DNS_API_TOKEN`).

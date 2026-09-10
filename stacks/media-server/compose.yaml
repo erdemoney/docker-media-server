@@ -24,6 +24,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/jellyfin/config:/config
+      - /mnt/decypharr:/mnt/decypharr:rslave
     tmpfs:
       - /transcodes
     labels:
@@ -71,6 +72,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/radarr:/config
+      - /mnt/decypharr:/mnt/decypharr:rslave
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.entrypoints=https"
@@ -97,6 +99,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/sonarr:/config
+      - /mnt/decypharr:/mnt/decypharr:rslave
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.entrypoints=https"
@@ -172,6 +175,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/bazarr/config:/config
+      - /mnt/decypharr:/mnt/decypharr:rslave
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bazarr.entrypoints=https"

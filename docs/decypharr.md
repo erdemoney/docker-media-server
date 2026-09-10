@@ -27,13 +27,20 @@ Config is written to `$CONFIG_DIR/decypharr/configs/config.json`.
 ## Visibility of the mount
 
 FUSE mounts made inside the container propagate to the host at `/mnt/decypharr` (the `:rshared`
-bind). If the arr containers don't yet mount that path, add a shared bind to Sonarr and Radarr so
-they can import:
+bind). The consumers are already wired in the stack — `jellyfin`, `sonarr`, `radarr`, and
+`bazarr` each bind that path back in:
 
 ```yaml
-# both services, same host path as Decypharr uses
-- /mnt/decypharr:/mnt/decypharr
+- /mnt/decypharr:/mnt/decypharr:rslave
 ```
+
+The propagation flags matter and are not symmetric: Decypharr is the **producer**, so it needs
+`:rshared` to push mounts it creates out to the host; the others are **consumers**, so they need
+`:rslave` to receive them. A plain bind would snapshot the host's mount table at container start
+and show an empty directory — Decypharr creates the FUSE mount *after* startup, and re-creates it
+on every restart. This also means the host's `/mnt` must itself be a shared mount
+(`findmnt -o TARGET,PROPAGATION /mnt`; make it so with `sudo mount --make-rshared /mnt`), which
+Decypharr's `:rshared` bind requires anyway.
 
 ## Integration with Sonarr/Radarr
 
