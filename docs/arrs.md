@@ -106,3 +106,15 @@ Sonarr/Radarr root folders must point at paths inside their own containers. The 
 currently do **not** bind the media dataset into the apps — if Jellyfin should serve libraries and
 the \*arrs should import into them, add the binds first; see
 [Maintenance](maintenance).
+
+## Hardlinks (why imports are instant)
+
+When Radarr/Sonarr "import" a file, they don't copy it — they create a **hardlink** from the
+download location (e.g. Decypharr's FUSE mount or a Usenet temp dir) to the media library. A
+hardlink is a second directory entry pointing at the same inode on disk: zero extra space, zero
+copy time, and deleting the original doesn't hurt the library copy (or vice versa).
+
+The one constraint: **hardlinks only work within the same filesystem** (same dataset on ZFS, same
+partition, etc.). If your download temp dir and media library live on different datasets, the
+\*arrs fall back to a full copy — which doubles space usage and takes longer. Keep
+`DATA_DIR` and the download location on the same dataset to get the instant-import benefit.
