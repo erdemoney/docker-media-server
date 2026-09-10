@@ -102,20 +102,29 @@ profile step is easy to forget.
 
 ## Root folders and mounts
 
-Sonarr/Radarr root folders must point at paths inside their own containers. The compose files
-currently do **not** bind the media directory into the apps — if Jellyfin should serve libraries and
-the \*arrs should import into them, add the binds first; see
-[Maintenance](maintenance).
+Sonarr/Radarr root folders must point at paths inside their own containers. In this stack the
+library lives on Decypharr's FUSE mount (`/mnt/decypharr`), so the \*arrs need that path bound in —
+Decypharr propagates the mount to the host, and the arrs pick it up with a shared bind:
+
+```yaml
+- /mnt/decypharr:/mnt/decypharr
+```
+
+Then point each app's root folder (and Jellyfin's libraries) at subpaths of that mount.
 
 ## Hardlinks (why imports are instant)
 
 When Radarr/Sonarr "import" a file, they don't copy it — they create a **hardlink** from the
-download location (e.g. Decypharr's FUSE mount or a Usenet temp dir) to the media library. A
-hardlink is a second directory entry pointing at the same inode on disk: zero extra space, zero
-copy time, and deleting the original doesn't hurt the library copy (or vice versa).
+download location to the media library. A hardlink is a second directory entry pointing at the
+same inode: zero extra space, zero copy time, and deleting the original doesn't hurt the library
+copy (or vice versa).
 
-The one constraint: **hardlinks only work within the same filesystem** — same partition, same
-dataset, same volume, whatever your storage calls it. If your download temp dir and media library
-are on different filesystems, the \*arrs fall back to a full copy, which doubles space usage and
-takes longer. Keep `DATA_DIR` and the download location on the same filesystem to get the
-instant-import benefit.
+In this stack that's automatic: Decypharr resolves downloads into its FUSE mount and the \*arrs
+import *from the same mount* into root folders that sit on it — one filesystem, two directory
+entries, no disk involved.
+
+The one constraint: **hardlinks only work within a single filesystem** — same partition, same
+volume, same mount, whatever your storage calls it. If your download location and media library
+are on different filesystems (e.g. you add a local qBittorrent/SABnzbd writing to a separate disk),
+the \*arrs fall back to a full copy, which doubles space usage and takes longer. Keep both on the
+same filesystem to keep imports instant.

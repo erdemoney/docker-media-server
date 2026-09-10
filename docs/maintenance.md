@@ -65,10 +65,10 @@ metadata is not. Test restores periodically; an untested backup is a gamble.
 These are the outstanding items from first bring-up — do them once, then forget:
 
 - **Jellyfin media access** — the compose mounts only `/config`. To serve libraries (and let the
-  *arrs import into them), add the media binds to the `jellyfin` *and\* `sonarr`/`radarr` services
-  (e.g. `${DATA_DIR}:/media` or per-subfolder mounts), then point root folders at those paths and
-  add the libraries in the Jellyfin UI.
-- **Root folders** in Radarr/Sonarr must match the bind mounts you actually give the containers.
+  *arrs import into them), bind Decypharr's FUSE mount into `jellyfin` *and\* `sonarr`/`radarr`
+  (`- /mnt/decypharr:/mnt/decypharr`), then point root folders at subpaths of it and add the
+  libraries in the Jellyfin UI (see [The \*arrs](arrs)).
+- **Root folders** in Radarr/Sonarr must point at paths the containers can actually reach.
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
   working `CF_DNS_API_TOKEN`).
 - **CrowdSec** — confirm the bouncer authed: `docker exec crowdsec cscli bouncers list`

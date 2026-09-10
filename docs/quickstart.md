@@ -42,7 +42,6 @@ Set each variable (see `stacks/*/.env.example`):
 | `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
 | `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
 | `SERVICES_DIR`                  | all stacks     | directory for app configs on disk, e.g. `/srv/media-server/data` |
-| `DATA_DIR`                      | media-server   | the media library root, e.g. `/srv/media`                        |
 | `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config and media files                     |
 | `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
