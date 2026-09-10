@@ -32,6 +32,8 @@ Seerr handles user requests.
 ## Key features
 
 - **Hardlink-friendly layout** — imports are instant, zero extra disk usage
+- **Automatic HTTPS** — Traefik issues a `*.DOMAIN` Let's Encrypt wildcard cert via Cloudflare
+  DNS-01; every app UI ships on TLS, on the public internet and on LAN/Tailnet alike
 - **Automated updates** — Renovate opens PRs, CI validates every change
 - **Edge security** — CrowdSec WAF at Traefik, Cloudflare tunnel for WAN ingress
 - **Single source of truth** — compose, configs, and docs in one repo; `just up` on any Docker host

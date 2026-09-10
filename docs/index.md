@@ -37,6 +37,11 @@ Media flow: Prowlarr finds releases (incl. the Torrentio debrid indexer) → Son
 them → Decypharr resolves debrid/Usenet into instant files on a FUSE mount → \*arrs import into
 the ZFS library → Jellyfin streams to clients; Seerr handles requests from users.
 
+**HTTPS comes out of the box.** Traefik's ACME provider creates the DNS-01 challenge through
+Cloudflare (`CF_DNS_API_TOKEN`) and issues a **Let's Encrypt wildcard certificate for
+`*.DOMAIN`**, automatically renewed — so every service's UI is served over TLS, whether it's
+reached from the public internet, LAN, or Tailnet. No per-app TLS configuration is involved.
+
 ## Hardware
 
 A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150

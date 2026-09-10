@@ -33,6 +33,16 @@ For a hostname to actually work, two things must line up:
 Removing a hostname from Public Hostnames removes it from the internet; LAN/Tailnet access goes
 directly to Traefik on `:443` and is unaffected.
 
+## Certificates (automatic)
+
+HTTPS is set up once and then handled for you. Traefik's ACME provider creates the
+`_acme-challenge` TXT record through the Cloudflare API (`CF_DNS_API_TOKEN`) and issues a
+**Let's Encrypt wildcard certificate for `*.DOMAIN`** — one cert that covers every hostname
+terminating at Traefik, whether it arrived via the tunnel, LAN, or Tailnet (all three end at
+Traefik on `:443`). Renewals are automatic. Confirm issuance in the Traefik dashboard's ACME
+panel (`https://traefik.<DOMAIN>`); no per-app TLS setup is needed because every router label
+sets `tls=true`.
+
 ## Media through the tunnel (no CDN caching)
 
 Cloudflare's content restriction (historically "Section 2.8") only applies to the **CDN
