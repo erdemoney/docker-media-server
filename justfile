@@ -946,8 +946,9 @@ dirs CONFIG_DIR="" PUID="auto" PGID="auto":
         sed "s|\${ACME_EMAIL}|$ACME_EMAIL|g" "$TPL" > "$CONFIG_DIR/traefik/traefik.yml.tmp"
         mv "$CONFIG_DIR/traefik/traefik.yml.tmp" "$CONFIG_DIR/traefik/traefik.yml"
         if [ -z "$ACME_EMAIL" ]; then
-            echo "warning: ACME_EMAIL is empty in stacks/traefik/.env - Let's Encrypt cannot"
-            echo "         register an account, so no certificates will be issued. Run 'just init'."
+            echo "warning: ACME_EMAIL is empty in stacks/traefik/.env - traefik requires it for"
+            echo "         the ACME resolver, so no certificates will be issued. Run 'just init'."
+            echo "         (There is no Let's Encrypt account to sign up for - see docs/ingress.md.)"
         fi
     fi
 

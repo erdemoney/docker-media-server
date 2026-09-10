@@ -36,8 +36,9 @@ Run `just init` — it creates each stack's `.env` and walks you through **every
 - Subdomains default to the example values — Enter to keep, type to change;
   `ENV_PUID`/`ENV_PGID` instead propose the uid/gid of the user running `just` (Enter to
   use), so container files match your user — they fall back to `1000` if you run as root
-- `ACME_EMAIL` is your Let's Encrypt account address — `just dirs` renders it into
-  `traefik.yml`; leave it empty and no certificates will be issued
+- `ACME_EMAIL` is your Let's Encrypt contact address — `just dirs` renders it into
+  `traefik.yml`; leave it empty and no certificates will be issued. There is **no Let's Encrypt
+  account to register**: Traefik creates one over ACME on first start (see [Ingress](ingress))
 - `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
 - Explains each Cloudflare secret, then **confirms before opening the page in your
@@ -71,6 +72,10 @@ Set each variable (see `stacks/*/.env.example`):
 ## 2. Where the secrets come from
 
 ### `CF_DNS_API_TOKEN` — Cloudflare (wildcard TLS)
+
+This token *is* the entire Let's Encrypt prerequisite — DNS-01 is how Traefik proves it owns
+`*.DOMAIN`. Nothing has to be set up at Let's Encrypt itself; see
+[Ingress → Certificates](ingress#certificates-automatic).
 
 1. dash.cloudflare.com → **My Profile** → **API Tokens** → **Create Token**.
 2. Use the **Edit zone DNS** template (or custom: Zone → DNS → **Edit** on `DOMAIN`).

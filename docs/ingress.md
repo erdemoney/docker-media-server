@@ -43,6 +43,52 @@ Traefik on `:443`). Renewals are automatic. Confirm issuance in the Traefik dash
 panel (`https://traefik.<DOMAIN>`); no per-app TLS setup is needed because every router label
 sets `tls=true`.
 
+### There is no Let's Encrypt account to create
+
+This trips people up: Let's Encrypt has **no signup page, no dashboard, and no email
+verification**. The account is created programmatically over ACME the first time Traefik starts —
+it generates a keypair, registers it, accepts the subscriber agreement on your behalf, and stores
+all of it in `$CONFIG_DIR/traefik/acme.json`. You never visit their website.
+
+So `ACME_EMAIL` needs no prior setup anywhere. Two caveats about what it actually does:
+
+- **Traefik requires the field** (it's `Required: Yes` in Traefik's ACME reference), even though
+  Let's Encrypt treats the contact address as optional. Leave it blank and the resolver is
+  misconfigured — `just dirs` warns you.
+- **It will not get you renewal reminders.** Let's Encrypt
+  [ended expiration notification emails on 4 June 2025](https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended)
+  and deleted the addresses it had stored; addresses sent via ACME are no longer kept against
+  issuance data. Renewal is automatic here anyway, but if you want independent alerting, use a
+  third-party monitor (Let's Encrypt suggests Red Sift Certificates Lite, free up to 250 certs)
+  rather than expecting mail from them.
+
+### What you *do* have to set up
+
+All of it is Cloudflare-side, and all of it is already in [Quickstart](quickstart):
+
+1. The domain is on Cloudflare (an active zone) — Traefik proves ownership by writing DNS records.
+2. `CF_DNS_API_TOKEN` can edit that zone's DNS (the **Edit zone DNS** template).
+3. Nothing else. Because the wildcard forces the **DNS-01** challenge — HTTP-01 cannot issue
+   wildcards — the certificate never depends on inbound port 80/443 reachability. Certs issue
+   correctly before the tunnel or any DNS record for an app exists.
+
+### Use the staging CA while experimenting
+
+Let's Encrypt's rate limits "last up to one week and cannot be overridden", so don't iterate on a
+broken setup against production. In `data/traefik/traefik.yml.template`, point the resolver at
+staging, then `just up`:
+
+```yaml
+caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+```
+
+Staging issues untrusted certs (browsers will warn — that's expected). When you switch back to
+production, delete the storage first so the staging account and certs aren't reused:
+
+```bash
+just down && rm -f data/traefik/acme.json && just up   # dirs re-creates it 0600
+```
+
 ## Media through the tunnel (no CDN caching)
 
 Cloudflare's content restriction (historically "Section 2.8") only applies to the **CDN
