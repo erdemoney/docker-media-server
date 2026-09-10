@@ -57,26 +57,53 @@ runtime config. Back it up too, encrypted and deduplicated, with [restic](https:
 run in a container by `just` (nothing to install). One-time setup:
 
 ```
-just init          # answer yes to "restic backups" (or copy .env.backup.example -> .env.backup by hand)
+just init          # answer yes to the R2 restic step (or copy .env.backup.example -> .env.backup by hand)
 just backup-init   # create the restic repository (idempotent)
 just backup        # snapshot the repo; schedule it daily via a systemd timer or cron
 ```
 
-`.env.backup` is passed to the container with `docker run --env-file`, so it only contains restic's
-standard shell variables — **backend-agnostic**. Set `RESTIC_REPOSITORY` to whatever you use:
+`.env.backup` is passed to the container with `docker run --env-file`. `just init` configures
+it for the documented backend, **Cloudflare R2** — zero egress, no minimums, same account as
+the rest of this stack. (Backblaze B2 is cheaper raw storage; every backend works, but you're
+on your own if you deviate — see below.)
+
+#### Cloudflare R2 (the documented path)
+
+1. `dash.cloudflare.com` → **R2** → **Create bucket** (e.g. `media-server-restic`; location
+   Automatic).
+2. **R2** → **Manage R2 API Tokens** → **Create API token** → **Admin read & write**. Save the
+   **Access Key ID** and **Secret Access Key**, and note your **Account ID** (top of the R2 page).
+3. Run `just init` and answer **yes** to "Configure R2 restic backups now?" — it prompts for the
+   Account ID, bucket, and token, then writes `.env.backup`:
+
+   ```
+   RESTIC_REPOSITORY=s3:https://<ACCOUNT_ID>.r2.cloudflarestorage.com/<BUCKET>
+   RESTIC_PASSWORD=...
+   AWS_ACCESS_KEY_ID=...
+   AWS_SECRET_ACCESS_KEY=...
+   AWS_DEFAULT_REGION=auto
+   ```
+
+   `AWS_DEFAULT_REGION` must stay `auto` — it's R2's only region. To configure by hand instead
+   of re-running init, copy `.env.backup.example` to `.env.backup` and fill the same values.
+
+#### Other backends (on you)
+
+The recipes stay backend-agnostic, so a deviation is one edit in `.env.backup`. Set
+`RESTIC_REPOSITORY` and the matching credentials yourself:
 
 | Backend       | `RESTIC_REPOSITORY` example               |
 | ------------- | ----------------------------------------- |
+| Backblaze B2  | `b2:my-bucket:my-path` (cheapest storage) |
 | local dir     | `/mnt/backups/restic`                     |
 | SFTP          | `sftp:user@host:/srv/restic`              |
 | S3-compatible | `s3:s3.amazonaws.com/my-bucket`           |
-| Backblaze B2  | `b2:my-bucket:my-path`                    |
 | Azure / GCS   | `azure:container:/path` / `gs:bucket:/path` |
 | rclone        | `rclone:remote:path`                      |
 
-Backends that need credentials get them added to `.env.backup` too (`AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) — they are
-forwarded the same way. Snapshots **exclude `.git` and `.env.backup`**, so the unencrypted
+Credential vars live in `.env.backup` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) and are forwarded the same way.
+Snapshots **exclude `.git` and `.env.backup`**, so the unencrypted
 `RESTIC_PASSWORD` is never stored inside the backups; keep that password somewhere safe or you
 cannot restore anything.
 

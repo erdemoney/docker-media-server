@@ -266,28 +266,64 @@ init:
         echo "  already configured ($(get_var "$BACKUP_ENV" RESTIC_REPOSITORY))"
     else
         printf '%s\n' \
-    '  Back up this repo (all .env files + data/) to any restic backend. Restic runs in a' \
-    '  container; RESTIC_REPOSITORY picks the backend (s3:, b2:, sftp:, /local/path, ...)' \
-    '  and RESTIC_PASSWORD encrypts it. Skip with Enter; fill .env.backup later, then' \
-    '  run `just backup-init` and `just backup`.'
-        printf '  Configure restic backups now? [y/N] '
+    '  Back up this repo (all .env files + data/) to an encrypted restic repository in' \
+    '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container; the' \
+    '  values below come from dash.cloudflare.com -> R2 (Create bucket, then Manage R2' \
+    '  API Tokens). Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
+    "  .env.backup - that's the only supported deviation."
+        printf '  Configure R2 restic backups now? [y/N] '
         read -r yes_backup || yes_backup=""
         case "$yes_backup" in
         y|Y|yes|Yes|YES)
-            cur_repo=$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)
-            if [ -n "$cur_repo" ]; then
-                printf '  RESTIC_REPOSITORY [%s, Enter to keep] > ' "$cur_repo"
+            cur_act=$(get_var "$BACKUP_ENV" R2_ACCOUNT_ID) || true
+            if [ -n "$cur_act" ]; then
+                printf '  R2 Account ID [%s, Enter to keep] > ' "$cur_act"
             else
-                printf '  RESTIC_REPOSITORY (e.g. s3:s3.amazonaws.com/my-bucket) > '
+                printf '  R2 Account ID (R2 dashboard, top of page) > '
             fi
-            read -r repo || repo=""
-            [ -n "$repo" ] && set_var "$BACKUP_ENV" RESTIC_REPOSITORY "$repo"
+            read -r acct || acct=""
+            [ -n "$acct" ] && set_var "$BACKUP_ENV" R2_ACCOUNT_ID "$acct"
+
+            cur_bkt=$(get_var "$BACKUP_ENV" R2_BUCKET) || true
+            if [ -n "$cur_bkt" ]; then
+                printf '  R2 bucket name [%s, Enter to keep] > ' "$cur_bkt"
+            else
+                printf '  R2 bucket name (R2 dashboard -> Create bucket) > '
+            fi
+            read -r bkt || bkt=""
+            [ -n "$bkt" ] && set_var "$BACKUP_ENV" R2_BUCKET "$bkt"
+
+            cur_key=$(get_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID) || true
+            if [ -n "$cur_key" ]; then
+                printf '  R2 Access Key ID [%s, Enter to keep] > ' "$cur_key"
+            else
+                printf '  R2 Access Key ID (Manage R2 API Tokens) > '
+            fi
+            read -r akey || akey=""
+            [ -n "$akey" ] && set_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID "$akey"
+
+            if [ -n "$(get_var "$BACKUP_ENV" AWS_SECRET_ACCESS_KEY)" ]; then
+                printf '  R2 Secret Access Key [hidden, Enter to keep] > '
+            else
+                printf '  R2 Secret Access Key (hidden, same page) > '
+            fi
+            read -rs skey || skey=""
+            printf '\n'
+            [ -n "$skey" ] && set_var "$BACKUP_ENV" AWS_SECRET_ACCESS_KEY "$skey"
+
+            acct=$(get_var "$BACKUP_ENV" R2_ACCOUNT_ID) || true
+            bkt=$(get_var "$BACKUP_ENV" R2_BUCKET) || true
+            if [ -n "$acct" ] && [ -n "$bkt" ]; then
+                set_var "$BACKUP_ENV" AWS_DEFAULT_REGION auto
+                set_var "$BACKUP_ENV" RESTIC_REPOSITORY "s3:https://$acct.r2.cloudflarestorage.com/$bkt"
+            fi
+
             printf '  RESTIC_PASSWORD (hidden, blank to skip) > '
             read -rs rpw || rpw=""
             printf '\n'
             [ -n "$rpw" ] && set_var "$BACKUP_ENV" RESTIC_PASSWORD "$rpw"
             if [ -n "$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)" ] && [ -n "$(get_var "$BACKUP_ENV" RESTIC_PASSWORD)" ]; then
-                echo "  restic configured - next: 'just backup-init', then 'just backup'."
+                echo "  restic configured (R2) - next: 'just backup-init', then 'just backup'."
             else
                 echo "  left incomplete - fill RESTIC_REPOSITORY + RESTIC_PASSWORD in .env.backup later."
             fi
@@ -656,13 +692,16 @@ wiring CONFIG_DIR="":
     echo "done. Paste URL + key pairs from the sections above; test each connection in the UI."
 
 # Encrypted, deduplicated repo backups with restic, run in a container (nothing to
-# install). The backend lives in .env.backup: RESTIC_REPOSITORY selects it (local,
-# sftp:, s3:, b2:, rclone: ...) and RESTIC_PASSWORD encrypts it; everything in that
-# file is forwarded via docker run --env-file, so backend credentials added there are
-# forwarded too. Scope: the repo working tree - every .env plus data/ (with the default
-# layout that includes the $CONFIG_DIR app config state too). If you point CONFIG_DIR
-# at external storage, cover it with native snapshots / a second restic profile.
-# Configure .env.backup with `just init`, or copy .env.backup.example by hand.
+# install). Documented backend is Cloudflare R2 (see how-to in the wiki); `.env.backup`
+# is configured by `just init` (R2_ACCOUNT_ID / R2_BUCKET / AWS creds -> RESTIC_REPOSITORY
+# + RESTIC_PASSWORD; `AWS_DEFAULT_REGION=auto` is required for R2). Deviating is one edit
+# in .env.backup - RESTIC_REPOSITORY selects any backend (local, sftp:, s3:, b2:, rclone: ...)
+# and RESTIC_PASSWORD encrypts it; everything in that file is forwarded via docker run
+# --env-file, so backend credentials added there are forwarded too. Scope: the repo working
+# tree - every .env plus data/ (with the default layout that includes the $CONFIG_DIR app
+# config state too). If you point CONFIG_DIR at external storage, cover it with native
+# snapshots / a second restic profile. Configure .env.backup with `just init`, or copy
+# .env.backup.example by hand.
 [group('Backups')]
 backup-init:
     #!/usr/bin/env bash
