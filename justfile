@@ -125,9 +125,45 @@ init:
         fi
     }
 
+    require_value() {   # FILE VAR [hint] [normalizer]: required input; loops until non-empty
+        local file="$1" var="$2" hint="${3:-}" norm="${4:-}" cur ans
+        while :; do
+            cur=$(get_var "$file" "$var") || true
+            if [ -n "$cur" ]; then
+                printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+                read -r ans || { echo "  input closed - leaving $var as-is"; return 1; }
+                [ -z "$ans" ] && return 0
+            else
+                if [ -n "$hint" ]; then
+                    printf '  %s [%s] > ' "$var" "$hint"
+                else
+                    printf '  %s > ' "$var"
+                fi
+                read -r ans || { echo "  input closed - $var is still unset"; return 1; }
+                if [ -z "$ans" ]; then
+                    echo "  required - enter a path"
+                    continue
+                fi
+            fi
+            if [ -n "$norm" ]; then
+                ans=$("$norm" "$ans") || true
+            fi
+            if [ "$ans" != "$cur" ]; then
+                set_all "$var" "$ans"
+            fi
+            return 0
+        done
+    }
+
+    echo "== Config directory (required) =="
+    printf '%s\n' \
+        '  Where app configs + acme.json live on this host, outside the repo checkout' \
+        '  (the repo holds code; this holds state). Relative paths are auto-absolutized.'
+    require_value "$TRAEFIK_ENV" CONFIG_DIR "e.g. /srv/media-server/data" abs_path
+    echo
+
     echo "== Domain and paths (shared across stacks) =="
     prompt_value "$TRAEFIK_ENV" DOMAIN "your domain, e.g. example.com"
-    prompt_value "$TRAEFIK_ENV" CONFIG_DIR "config dir, e.g. /srv/media-server/data" abs_path
     echo
 
     echo "== traefik =="

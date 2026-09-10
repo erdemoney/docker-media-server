@@ -29,7 +29,9 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 
 Run `just init` — it creates each stack's `.env` and walks you through **every** variable:
 
-- `DOMAIN` and `CONFIG_DIR` are prompted once and synced to every stack
+- `CONFIG_DIR` is asked **first and is required** — where app configs live on this host,
+  outside the repo checkout. A relative answer is auto-resolved to an absolute path
+- `DOMAIN` is prompted once; both are synced to every stack
 - Subdomains and `ENV_PUID`/`ENV_PGID` default to the example values — Enter to keep,
   type to change
 - `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
