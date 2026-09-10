@@ -56,17 +56,23 @@ Sanity check any link from inside the network:
 
 ## Sonarr/Radarr → download clients
 
-In both apps: Settings → Download Clients.
+In both apps: Settings → Download Clients. If both protocols are configured in Decypharr, add
+**two** clients pointing at Decypharr — one **qBittorrent** for debrid, one **SABnzbd** for
+Usenet (Decypharr exposes both APIs):
 
-- **Decypharr (torrents / debrid)** — add as either a **qBittorrent** or **SABnzbd** client
-  (Decypharr exposes both APIs):
+- **qBittorrent** — name `Decypharr (debrid)`
   - Host `decypharr`, port `8282`
   - Username: the **arr's own URL** — `http://sonarr:8989` (or radarr's); Decypharr identifies
     the caller by this.
   - Password: that **arr's own API key** (Settings → General).
   - Category `sonarr` / `radarr`; priority `0`.
+- **SABnzbd** — name `Decypharr (usenet)` (only if you configured Usenet in Decypharr)
+  - Host `decypharr`, port `8282`, **URL base `/sabnzbd`**
+  - Same username/password as above.
+  - Category `sonarr` / `radarr`; priority `0`.
 
-Use priorities to prefer one source over the other. Test each client. Decypharr is detailed in
+Give them different priorities to prefer one protocol over the other — the arr sends a release
+to the highest-priority client that can handle it. Test each client. Decypharr is detailed in
 [Decypharr](decypharr).
 
 ## Bazarr → Sonarr/Radarr (subtitles)

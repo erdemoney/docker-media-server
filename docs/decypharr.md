@@ -37,11 +37,15 @@ they can import:
 
 ## Integration with Sonarr/Radarr
 
-1. **Download client** (see also [The \*arrs](arrs)) — add Decypharr as a **qBittorrent** client:
-   - Host `decypharr`, port `8282`
-   - Username: the **arr's own URL** (`http://sonarr:8989` / `http://radarr:7878`)
-   - Password: the **arr's own API key**
-   - Category `sonarr` / `radarr`, priority `0`
+1. **Download clients** (see also [The \*arrs](arrs)) — with both protocols configured, add
+   Decypharr **twice** in each arr:
+   - **qBittorrent** (`Decypharr (debrid)`) — debrid downloads.
+   - **SABnzbd** (`Decypharr (usenet)`) — only if you're using Usenet; set **URL base
+     `/sabnzbd`**.
+   - Both share the same values: host `decypharr`, port `8282`, username = the **arr's own URL**
+     (`http://sonarr:8989` / `http://radarr:7878`), password = the **arr's own API key**,
+     category `sonarr` / `radarr`. Set different priorities to prefer one protocol over the
+     other.
 2. **Outbound** — Decypharr → Settings → **Arrs**: it auto-detects apps that hit it; give each
    arr's host (`http://sonarr:8989`, not the public URL) and API key.
 3. **Path mapping** — if the arr's import path differs from Decypharr's mount path, set one on

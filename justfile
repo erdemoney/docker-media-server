@@ -507,12 +507,18 @@ wiring CONFIG_DIR="":
     printf '  Radarr  url http://radarr:7878  api key %s\n' "$RADARR_KEY"
 
     echo
-    echo "== sonarr -> Settings -> Download Clients -> add qBittorrent (Decypharr) =="
-    echo "  host decypharr  port 8282"
-    printf '  username http://sonarr:8989\n  password %s\n  category sonarr  priority 0\n' "$SONARR_KEY"
+    echo "== sonarr -> Settings -> Download Clients: add BOTH (debrid + usenet) =="
+    echo "  qBittorrent  'Decypharr (debrid)': host decypharr port 8282"
+    printf '    username http://sonarr:8989\n    password %s\n    category sonarr  priority 0\n' "$SONARR_KEY"
+    echo "  SABnzbd      'Decypharr (usenet)': host decypharr port 8282 urlbase /sabnzbd"
+    printf '    username http://sonarr:8989\n    password %s\n    category sonarr  priority 0\n' "$SONARR_KEY"
+    echo "  (same keys for both; different priorities pick debrid vs usenet)"
     echo
-    echo "== radarr -> Settings -> Download Clients -> add qBittorrent (Decypharr) =="
-    printf '  username http://radarr:7878\n  password %s\n  category radarr  priority 0\n' "$RADARR_KEY"
+    echo "== radarr -> Settings -> Download Clients: add BOTH (debrid + usenet) =="
+    echo "  qBittorrent  'Decypharr (debrid)': host decypharr port 8282"
+    printf '    username http://radarr:7878\n    password %s\n    category radarr  priority 0\n' "$RADARR_KEY"
+    echo "  SABnzbd      'Decypharr (usenet)': host decypharr port 8282 urlbase /sabnzbd"
+    printf '    username http://radarr:7878\n    password %s\n    category radarr  priority 0\n' "$RADARR_KEY"
 
     echo
     echo "== decypharr -> Settings -> Arrs (outbound / queue cleanup) =="
