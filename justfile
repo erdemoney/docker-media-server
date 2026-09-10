@@ -125,6 +125,25 @@ init:
         fi
     }
 
+    prompt_id() {   # FILE VAR DEFAULT: propose DEFAULT (this user's id) while the value is
+        local file="$1" var="$2" def="$3" cur ans   # unset or still the example 1000
+        cur=$(get_var "$file" "$var") || true
+        if [ "$cur" = "1000" ] || [ -z "$cur" ]; then
+            printf '  %s [%s, Enter to use] > ' "$var" "$def"
+            read -r ans || ans=""
+            if [ -z "$ans" ]; then
+                ans="$def"
+            fi
+        else
+            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            read -r ans || ans=""
+        fi
+        if [ -n "$ans" ] && [ "$ans" != "$cur" ]; then
+            set_var "$file" "$var" "$ans"
+        fi
+        return 0
+    }
+
     require_value() {   # FILE VAR [hint] [normalizer] [default]: fills unless typed otherwise
         local file="$1" var="$2" hint="${3:-}" norm="${4:-}" dfault="${5:-}" cur ans
         cur=$(get_var "$file" "$var") || true
@@ -248,8 +267,14 @@ init:
     echo
 
     echo "== media-server =="
-    prompt_value "$MEDIA_ENV" ENV_PUID
-    prompt_value "$MEDIA_ENV" ENV_PGID
+    sid=$(id -u); sgid=$(id -g)
+    if [ "$sid" -eq 0 ]; then
+        sid=1000; sgid=1000
+        echo "  (running as root - proposing 1000:1000 so containers don't run as root;"
+        echo "   re-run as your deploy user to use its uid/gid)"
+    fi
+    prompt_id "$MEDIA_ENV" ENV_PUID "$sid"
+    prompt_id "$MEDIA_ENV" ENV_PGID "$sgid"
     echo
     for sub in JELLYFIN SEERR RADARR SONARR PROWLARR PROFILARR BAZARR DECYPHARR; do
         prompt_value "$MEDIA_ENV" "SUB_DOMAIN_$sub"
@@ -574,7 +599,7 @@ wiring CONFIG_DIR="":
         CONFIG_DIR="{{ CONFIG_DIR }}"
     else
         CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
-        CONFIG_DIR="${CONFIG_DIR:-/mnt/storage/docker/data}"
+        CONFIG_DIR="${CONFIG_DIR:-{{ justfile_directory() }}/data}"
     fi
     echo "config dir: $CONFIG_DIR"
     echo
@@ -902,10 +927,11 @@ backup-unschedule:
     echo "removed restic-backup.{timer,service} and stopped the timer."
 
 # Pre-create + chown service config dirs (idempotent; also called by `just up`)
-# CONFIG_DIR is read from stacks/media-server/.env (fallback /mnt/storage/docker/data);
-# override positionally: just dirs /custom/path
-# No-op if the dirs already exist and ownership is already PUID:PGID.
-dirs CONFIG_DIR="" PUID="1000" PGID="1000":
+# CONFIG_DIR comes from stacks/media-server/.env (default: the repo's data/ dir).
+# PUID/PGID default to "auto": media-server .env ENV_PUID/ENV_PGID, else this
+# user's ids, else 1000 - so the chown always matches what the containers run as.
+# Override positionally: just dirs /custom/path 1000 1000
+dirs CONFIG_DIR="" PUID="auto" PGID="auto":
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -913,7 +939,19 @@ dirs CONFIG_DIR="" PUID="1000" PGID="1000":
         CONFIG_DIR="{{ CONFIG_DIR }}"
     else
         CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
-        CONFIG_DIR="${CONFIG_DIR:-/mnt/storage/docker/data}"
+        CONFIG_DIR="${CONFIG_DIR:-{{ justfile_directory() }}/data}"
+    fi
+    PUID="{{ PUID }}"
+    PGID="{{ PGID }}"
+    [ "$PUID" = auto ] && PUID=$(sed -n 's|^ENV_PUID=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+    [ "$PGID" = auto ] && PGID=$(sed -n 's|^ENV_PGID=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+    if [ "$PUID" = auto ] || [ -z "$PUID" ]; then
+        PUID=$(id -u)
+        [ "$PUID" -eq 0 ] && PUID=1000
+    fi
+    if [ "$PGID" = auto ] || [ -z "$PGID" ]; then
+        PGID=$(id -g)
+        [ "$PGID" -eq 0 ] && PGID=1000
     fi
     mkdir -p "$CONFIG_DIR"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,crowdsec/config,crowdsec/data}
-    chown -R "{{ PUID }}":"{{ PGID }}" "$CONFIG_DIR"
+    chown -R "$PUID":"$PGID" "$CONFIG_DIR"

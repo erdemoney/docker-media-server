@@ -32,8 +32,9 @@ Run `just init` — it creates each stack's `.env` and walks you through **every
 - `CONFIG_DIR` is asked first and defaults to the repo checkout's `data/` dir — Enter
   uses it (a relative answer is auto-resolved to an absolute path). App configs live here
 - `DOMAIN` is prompted once; both are synced to every stack
-- Subdomains and `ENV_PUID`/`ENV_PGID` default to the example values — Enter to keep,
-  type to change
+- Subdomains default to the example values — Enter to keep, type to change;
+  `ENV_PUID`/`ENV_PGID` instead propose the uid/gid of the user running `just` (Enter to
+  use), so container files match your user — they fall back to `1000` if you run as root
 - `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
 - Explains each Cloudflare secret, then **confirms before opening the page in your
@@ -56,8 +57,8 @@ Set each variable (see `stacks/*/.env.example`):
 | ------------------------------- | -------------- | ---------------------------------------------------------------- |
 | `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
 | `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
-| `CONFIG_DIR`                  | all stacks     | directory for app configs on disk (defaults to the repo's `data/` dir) |
-| `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config and media files                     |
+| `CONFIG_DIR`                    | all stacks     | directory for app configs on disk (defaults to the repo's `data/` dir) |
+| `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config dirs (init proposes the running user's ids) |
 | `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
 | `CROWDSEC_BOUNCER_API_KEY`      | traefik        | CrowdSec ↔ Traefik shared key (see below)                       |
