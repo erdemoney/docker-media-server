@@ -1,3 +1,9 @@
+# Template for Traefik's STATIC config. `just dirs` renders this to
+# data/traefik/traefik.yml (untracked) with ${ACME_EMAIL} from stacks/traefik/.env.
+# Traefik does not support templating or env vars in its static config, so the
+# substitution has to happen before the container starts. Edit this file, not the
+# rendered one - `just up` overwrites the output on every run.
+
 api:
   dashboard: true
   insecure: false
@@ -38,7 +44,7 @@ providers:
 certificatesResolvers:
   cloudflare:
     acme:
-      email: eric@demoney.net
+      email: ${ACME_EMAIL}
       storage: acme.json
       caServer: https://acme-v02.api.letsencrypt.org/directory
       dnsChallenge:

@@ -1,9 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "datasourceTemplate": "docker",
+      "managerFilePatterns": [
+        "/^justfile$/"
+      ],
+      "matchStrings": [
+        "restic_image\\s*:=\\s*\"(?<depName>[^:\"]+):(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Media stack dependency dashboard",
   "enabledManagers": [
-    "docker-compose"
+    "docker-compose",
+    "github-actions",
+    "pre-commit"
   ],
   "extends": [
     "config:recommended"
@@ -43,10 +57,7 @@
   "repositories": [
     "erdemoney/docker-media-server"
   ],
-  "schedule": [
-    "* 6 * * *"
-  ],
   "separateMajorMinor": true,
-  "separateMinorPatch": true,
+  "separateMultipleMajor": true,
   "timezone": "UTC"
 }

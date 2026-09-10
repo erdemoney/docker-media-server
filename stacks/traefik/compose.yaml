@@ -1,13 +1,18 @@
 services:
   traefik:
     image: traefik:v3.7.13
+    container_name: traefik
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
       TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
-    env_file: .env
+    # dynamic.yml resolves the CrowdSec key with {{ env "..." }}, so the variable
+    # has to exist in Traefik's own environment - env_file injects the whole file.
+    env_file:
+      - path: .env
+        required: false
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -48,6 +53,7 @@ services:
 
   crowdsec:
     image: crowdsecurity/crowdsec:v1.8.1
+    container_name: crowdsec
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

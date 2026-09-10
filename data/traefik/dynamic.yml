@@ -37,7 +37,9 @@ http:
           streamStartupBlock: true
           crowdsecLapiScheme: http
           crowdsecLapiHost: crowdsec:8080
-          crowdsecLapiKey: ${CROWDSEC_BOUNCER_API_KEY}
+          # Go template - Traefik renders dynamic config files through text/template.
+          # Shell-style ${VAR} is NOT substituted here and would be sent to LAPI verbatim.
+          crowdsecLapiKey: '{{ env "CROWDSEC_BOUNCER_API_KEY" }}'
           forwardedHeadersTrustedIPs:
             - 127.0.0.1/8
             - 10.0.0.0/8

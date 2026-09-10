@@ -1,4 +1,4 @@
-set shell := ["bash", "-uc"]
+set shell := ["bash", "-euo", "pipefail", "-c"]
 set dotenv-load := false
 
 stack_list := "traefik cloudflared media-server"
@@ -37,9 +37,9 @@ init:
     }
 
     set_var() {   # sets KEY to VALUE in FILE, preserving the rest of the file
-        local esc
-        esc=$(printf '%s' "$3" | sed -e 's/[&|\\]/\\&/g')
-        sed -i "s|^$2=.*|$2=$esc|" "$1"
+        local esc                     # (temp file + mv: `sed -i` is not portable,
+        esc=$(printf '%s' "$3" | sed -e 's/[&|\\]/\\&/g')   # BSD/macOS sed eats the
+        sed "s|^$2=.*|$2=$esc|" "$1" > "$1.tmp" && mv "$1.tmp" "$1"   # next arg)
     }
 
     vars_defined_in() {   # echoes each .env that defines the given VAR
@@ -144,43 +144,13 @@ init:
         return 0
     }
 
-    require_value() {   # FILE VAR [hint] [normalizer] [default]: fills unless typed otherwise
-        local file="$1" var="$2" hint="${3:-}" norm="${4:-}" dfault="${5:-}" cur ans
-        cur=$(get_var "$file" "$var") || true
-        if [ -n "$cur" ]; then
-            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
-            read -r ans || ans=""
-            [ -z "$ans" ] && return 0
-        else
-            if [ -n "$dfault" ]; then
-                printf '  %s [%s, Enter to use] > ' "$var" "$dfault"
-            elif [ -n "$hint" ]; then
-                printf '  %s [%s] > ' "$var" "$hint"
-            else
-                printf '  %s > ' "$var"
-            fi
-            read -r ans || ans=""
-            [ -z "$ans" ] && ans="$dfault"
-            if [ -z "$ans" ]; then
-                echo "  required - enter a path"
-                return 1
-            fi
-        fi
-        if [ -n "$norm" ]; then
-            ans=$("$norm" "$ans") || true
-        fi
-        if [ "$ans" != "$cur" ]; then
-            set_all "$var" "$ans"
-        fi
-    }
-
+    # CONFIG_DIR is derived, not configured: it is always the repo's own data/ dir.
+    # The tracked traefik config, the app state and the restic backup scope all live
+    # there, so pointing it elsewhere would silently split them apart.
+    CONFIG_DIR_VALUE="$(abs_path "{{ justfile_directory() }}/data")"
     echo "== Config directory =="
-    printf '%s\n' \
-        '  Where app configs + acme.json live on this host. Defaults to the repo' \
-        "  checkout's data/ dir ($(abs_path "{{ justfile_directory() }}/data")) -" \
-        '  `just init` runs on the server, so that is a real local path. Type a' \
-        '  relative path to absolutize it, or point it at storage on a NAS.'
-    require_value "$TRAEFIK_ENV" CONFIG_DIR "" abs_path "$(abs_path "{{ justfile_directory() }}/data")"
+    echo "  $CONFIG_DIR_VALUE (fixed - app configs, acme.json and traefik's config live here)"
+    set_all CONFIG_DIR "$CONFIG_DIR_VALUE"
     echo
 
     echo "== Domain and paths (shared across stacks) =="
@@ -189,6 +159,11 @@ init:
 
     echo "== traefik =="
     prompt_value "$TRAEFIK_ENV" SUB_DOMAIN_TRAEFIK
+    printf '%s\n' \
+        "  ACME_EMAIL is your Let's Encrypt account address (expiry notices go there)." \
+        '  It is rendered into traefik.yml by `just dirs`; leave empty to skip, but no' \
+        '  certificates will be issued until it is set.'
+    prompt_value "$TRAEFIK_ENV" ACME_EMAIL "you@example.com"
     echo
 
     echo "CROWDSEC_BOUNCER_API_KEY"
@@ -365,29 +340,29 @@ networks:
     docker network inspect internal >/dev/null 2>&1 || docker network create internal
     docker network inspect external >/dev/null 2>&1 || docker network create external
 
-# Validate every compose file against the docker compose schema
-# (seeds .env from the example if missing, so a fresh checkout validates too)
+# Validate every compose file against the docker compose schema.
+# Read-only: never creates or edits a .env (compose treats .env as optional and the
+# shell environment outranks it, so CONFIG_DIR is supplied here just for the check).
 validate:
     @for s in {{ stack_list }}; do \
-        if [ ! -f "stacks/$$s/.env" ]; then cp "stacks/$$s/.env.example" "stacks/$$s/.env"; fi; \
-        sed -i 's|^CONFIG_DIR=$|CONFIG_DIR=/tmp/ci-config|' "stacks/$$s/.env" || true; \
-        echo "-- stacks/$$s/compose.yaml" \
-        && docker compose -f "stacks/$$s/compose.yaml" config -q || exit 1 \
+        echo "-- stacks/$s/compose.yaml" \
+        && CONFIG_DIR="${CONFIG_DIR:-/tmp/just-validate}" \
+           docker compose -f "stacks/$s/compose.yaml" config -q || exit 1 \
     ; done
 
 # Pull fresh images for every stack
 pull:
     @for s in {{ stack_list }}; do \
-        echo "-- $$s" \
-        && docker compose -f "stacks/$$s/compose.yaml" pull \
+        echo "-- $s" \
+        && docker compose -f "stacks/$s/compose.yaml" pull || exit 1 \
     ; done
 
 # Update all containers to the images referenced in compose (pull + recreate changed ones)
 update-all:
     just pull
     @for s in {{ stack_list }}; do \
-        echo "-- $$s" \
-        && docker compose -f "stacks/$$s/compose.yaml" up -d \
+        echo "-- $s" \
+        && docker compose -f "stacks/$s/compose.yaml" up -d || exit 1 \
     ; done
 
 # Update one stack, e.g. `just update traefik`
@@ -534,15 +509,15 @@ df:
 # `just dirs` reads CONFIG_DIR from stacks/media-server/.env; override with `just dirs <path> [PUID PGID]`.
 up: networks dirs
     @for s in {{ stack_list }}; do \
-        echo "-- $$s" \
-        && docker compose -f "stacks/$$s/compose.yaml" up -d \
+        echo "-- $s" \
+        && docker compose -f "stacks/$s/compose.yaml" up -d || exit 1 \
     ; done
 
 # Tear the whole stack down
 down:
     @for s in {{ stack_list }}; do \
-        echo "-- $$s" \
-        && docker compose -f "stacks/$$s/compose.yaml" down \
+        echo "-- $s" \
+        && docker compose -f "stacks/$s/compose.yaml" down || exit 1 \
     ; done
 
 # Restart one stack, e.g. `just restart traefik`
@@ -926,10 +901,12 @@ backup-unschedule:
     sudo systemctl daemon-reload
     echo "removed restic-backup.{timer,service} and stopped the timer."
 
-# Pre-create + chown service config dirs (idempotent; also called by `just up`)
-# CONFIG_DIR comes from stacks/media-server/.env (default: the repo's data/ dir).
-# PUID/PGID default to "auto": media-server .env ENV_PUID/ENV_PGID, else this
-# user's ids, else 1000 - so the chown always matches what the containers run as.
+# Prepare everything on disk that compose bind-mounts (idempotent; called by `just up`):
+# the per-service config dirs, traefik's logs dir and acme.json (0600, must be a FILE -
+# docker would otherwise create a directory and ACME storage breaks), and the rendered
+# traefik.yml. CONFIG_DIR comes from stacks/media-server/.env (the repo's data/ dir).
+# PUID/PGID default to "auto": media-server .env ENV_PUID/ENV_PGID, else this user's
+# ids, else 1000 - so ownership always matches what the containers run as.
 # Override positionally: just dirs /custom/path 1000 1000
 dirs CONFIG_DIR="" PUID="auto" PGID="auto":
     #!/usr/bin/env bash
@@ -954,4 +931,27 @@ dirs CONFIG_DIR="" PUID="auto" PGID="auto":
         [ "$PGID" -eq 0 ] && PGID=1000
     fi
     mkdir -p "$CONFIG_DIR"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,crowdsec/config,crowdsec/data}
-    chown -R "$PUID":"$PGID" "$CONFIG_DIR"
+
+    # traefik: logs dir (crowdsec reads it) + acme.json as a FILE with 0600, or
+    # docker creates a directory there and cert storage silently fails.
+    mkdir -p "$CONFIG_DIR/traefik/logs"
+    [ -e "$CONFIG_DIR/traefik/acme.json" ] || touch "$CONFIG_DIR/traefik/acme.json"
+    chmod 600 "$CONFIG_DIR/traefik/acme.json" 2>/dev/null || true
+
+    # traefik's static config cannot read env vars, so render it here.
+    TPL="{{ justfile_directory() }}/data/traefik/traefik.yml.template"
+    if [ -f "$TPL" ]; then
+        ACME_EMAIL=$(sed -n 's|^ACME_EMAIL=\(.*\)|\1|p' stacks/traefik/.env 2>/dev/null | tail -n1 || true)
+        ACME_EMAIL="${ACME_EMAIL:-}"
+        sed "s|\${ACME_EMAIL}|$ACME_EMAIL|g" "$TPL" > "$CONFIG_DIR/traefik/traefik.yml.tmp"
+        mv "$CONFIG_DIR/traefik/traefik.yml.tmp" "$CONFIG_DIR/traefik/traefik.yml"
+        if [ -z "$ACME_EMAIL" ]; then
+            echo "warning: ACME_EMAIL is empty in stacks/traefik/.env - Let's Encrypt cannot"
+            echo "         register an account, so no certificates will be issued. Run 'just init'."
+        fi
+    fi
+
+    # Only touch entries that are actually mis-owned, and never abort `just up`
+    # over a file we cannot chown (e.g. root-owned state from a container).
+    chown "$PUID":"$PGID" "$CONFIG_DIR" 2>/dev/null || true
+    find "$CONFIG_DIR" \( ! -uid "$PUID" -o ! -gid "$PGID" \) -exec chown "$PUID":"$PGID" {} + 2>/dev/null || true

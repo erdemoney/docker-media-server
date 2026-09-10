@@ -17,6 +17,7 @@ x-hardened: &hardened
 services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:10.11.11
+    container_name: jellyfin
     <<: *common
     environment:
       PUID: ${ENV_PUID}
@@ -27,6 +28,11 @@ services:
       - /mnt:/mnt:rslave
     tmpfs:
       - /transcodes
+    # Intel/AMD iGPU passthrough for hardware transcoding. REMOVE these two lines
+    # if the host has no /dev/dri (a VM, or a CPU without an iGPU) - the container
+    # will refuse to start otherwise. See docs/services.md.
+    devices:
+      - /dev/dri:/dev/dri
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyfin.entrypoints=https"
@@ -43,6 +49,7 @@ services:
 
   seerr:
     image: ghcr.io/seerr-team/seerr:v3.4.1
+    container_name: seerr
     <<: *common
     init: true
     environment:
@@ -65,6 +72,7 @@ services:
 
   radarr:
     image: lscr.io/linuxserver/radarr:6.3.0
+    container_name: radarr
     <<: *hardened
     environment:
       PUID: ${ENV_PUID}
@@ -92,6 +100,7 @@ services:
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:4.0.19
+    container_name: sonarr
     <<: *hardened
     environment:
       PUID: ${ENV_PUID}
@@ -119,6 +128,7 @@ services:
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:2.5.2
+    container_name: prowlarr
     <<: *hardened
     environment:
       PUID: ${ENV_PUID}
@@ -145,6 +155,7 @@ services:
 
   profilarr:
     image: ghcr.io/dictionarry-hub/profilarr:2.2.0
+    container_name: profilarr
     <<: *common
     environment:
       PUID: ${ENV_PUID}
@@ -168,6 +179,7 @@ services:
 
   bazarr:
     image: lscr.io/linuxserver/bazarr:1.6.0
+    container_name: bazarr
     <<: *hardened
     environment:
       PUID: ${ENV_PUID}
@@ -195,6 +207,7 @@ services:
 
   decypharr:
     image: cy01/blackhole:v2.5
+    container_name: decypharr
     <<: *common
     security_opt:
       - no-new-privileges:true
