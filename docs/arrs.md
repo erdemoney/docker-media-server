@@ -34,7 +34,6 @@ All services share the `internal` Docker network, so every container reaches the
 | profilarr | `http://profilarr:6868` | 6868 | profilarr → Settings → Radarr/Sonarr connection |
 | bazarr    | `http://bazarr:6767`    | 6767 | (outbound only)                                 |
 | decypharr | `http://decypharr:8282` | 8282 | Settings → API token (shown after first setup)  |
-| sabnzbd   | `http://sabnzbd:8080`   | 8080 | SABnzbd → General → API key (if using Usenet)   |
 
 Rule of thumb: when any UI asks for another app's **URL + API key**, use the
 `http://<service>:<port>` from the table and the key from the target app.
@@ -55,14 +54,13 @@ Sanity check any link from inside the network:
 
 In both apps: Settings → Download Clients.
 
-- **Decypharr (torrents / debrid)** — add as a **qBittorrent** client:
+- **Decypharr (torrents / debrid)** — add as either a **qBittorrent** or **SABnzbd** client
+  (Decypharr exposes both APIs):
   - Host `decypharr`, port `8282`
   - Username: the **arr's own URL** — `http://sonarr:8989` (or radarr's); Decypharr identifies
     the caller by this.
   - Password: that **arr's own API key** (Settings → General).
   - Category `sonarr` / `radarr`; priority `0`.
-- **SABnzbd (Usenet, optional)** — add as a **Sabnzbd** client: host `sabnzbd`, port `8080`,
-  API key from SABnzbd's own config.
 
 Use priorities to prefer one source over the other. Test each client. Decypharr is detailed in
 [Decypharr](decypharr).

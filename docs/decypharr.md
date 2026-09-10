@@ -5,8 +5,8 @@ nav_order: 6
 
 # Decypharr (debrid gateway)
 
-Decypharr mounts your debrid provider as a FUSE filesystem and exposes a qBittorrent- and
-SABnzbd-compatible API, so Sonarr/Radarr see "instant" debrid/Usenet files instead of a download
+Decypharr mounts your debrid provider as a FUSE filesystem and exposes qBittorrent- and
+SABnzbd-compatible APIs, so Sonarr/Radarr see "instant" debrid files instead of a download
 queue. It runs from the media-server stack (`cy01/blackhole:v2.5`) with the fuse mount plumbing
 in the compose (`/mnt/:/mnt:rshared`, `/dev/fuse`, `SYS_ADMIN`, `apparmor:unconfined`).
 
@@ -49,9 +49,6 @@ they can import:
    `/media/tv`.
 4. **Repair worker / queue cleanup** — enable in Settings → Arrs (the blacklist + research
    defaults are sensible) so failed grabs don't clog the queue.
-
-Usenet-only setups can skip the debrid gateway and point the Sabnzbd client straight at
-`sabnzbd:8080`.
 
 ## Reference
 
