@@ -11,22 +11,6 @@ checkout runs on any Docker host (a dedicated box, a VM, a NAS appliance, ...) �
 prerequisites are Docker, `just`, and a directory for the repo. Platform-specific notes for one
 concrete deployment live in `truenas.md` at the repo root; everything here stays host-agnostic.
 
-## Hardware
-
-A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150
-new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
-transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM, a small NVMe for the OS and
-config, and whatever storage you mount for the media library (external USB, NFS, ZFS pool, ...).
-The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat; anything more
-concurrent (multiple remote streams) is where a GPU like the P400 earns its keep.
-
-## Operating system
-
-**Debian** (stable) is the safe default — minimal, long support cycles, and every Docker guide
-assumes it. If you're running Proxmox, spin up a Debian **LXC container** instead of a full VM;
-it shares the host kernel (so Docker works natively) and uses a fraction of the RAM and disk a
-VM would.
-
 ```text
                         Internet
                            |
@@ -52,6 +36,22 @@ VM would.
 Media flow: Prowlarr finds releases (incl. the Torrentio debrid indexer) → Sonarr/Radarr grab
 them → Decypharr resolves debrid/Usenet into instant files on a FUSE mount → \*arrs import into
 the ZFS library → Jellyfin streams to clients; Seerr handles requests from users.
+
+## Hardware
+
+A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150
+new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
+transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM, a small NVMe for the OS and
+config, and whatever storage you mount for the media library (external USB, NFS, ZFS pool, ...).
+The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat; anything more
+concurrent (multiple remote streams) is where a GPU like the P400 earns its keep.
+
+## Operating system
+
+**Debian** (stable) is the safe default — minimal, long support cycles, and every Docker guide
+assumes it. If you're running Proxmox, spin up a Debian **LXC container** instead of a full VM;
+it shares the host kernel (so Docker works natively) and uses a fraction of the RAM and disk a
+VM would.
 
 ## Repository layout
 
