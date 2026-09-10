@@ -171,7 +171,7 @@ what the R2 repository above is for.
 These are the outstanding items from first bring-up — do them once, then forget:
 
 - **Jellyfin libraries** — Decypharr's FUSE mount is already reachable from `jellyfin`, `sonarr`,
-  `radarr`, and `bazarr` (`- /mnt:/mnt:rslave`), so all that's left is adding
+  `radarr`, and `bazarr` (`- /mnt/debrid:/mnt:rslave`), so all that's left is adding
   the libraries in the Jellyfin UI pointing at subpaths of it (see [The \*arrs](arrs)). If those
   paths look empty inside the containers, check mount propagation (see [Decypharr](decypharr)).
 - **Root folders** in Radarr/Sonarr must point at paths the containers can actually reach.

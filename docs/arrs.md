@@ -118,13 +118,15 @@ service that touches media files — `sonarr`, `radarr`, `bazarr` (subtitles lan
 video), and `jellyfin` (playback):
 
 ```yaml
-- /mnt:/mnt:rslave
+- /mnt/debrid:/mnt:rslave
 ```
 
-`:rslave` on the parent `/mnt` is what makes the mount *appear* inside those containers whenever
-Decypharr creates it, with no startup ordering required (see [Decypharr](decypharr) for why it's
-the parent and not the mountpoint). Nothing to add by hand — just point each app's root folder,
-and Jellyfin's libraries, at subpaths of `/mnt/decypharr`.
+`:rslave` on the parent is what makes the mount *appear* inside those containers whenever
+Decypharr creates it, with no startup ordering required. The bound parent is a dedicated host
+directory (`/mnt/debrid`) mapped in as `/mnt`, so the containers see only the FUSE tree, not the
+host's real `/mnt` (see [Decypharr](decypharr) for why it's the parent and not the mountpoint).
+Nothing to add by hand — just point each app's root folder, and Jellyfin's libraries, at subpaths
+of `/mnt/decypharr`.
 
 ## Imports are symlinks, not hardlinks
 

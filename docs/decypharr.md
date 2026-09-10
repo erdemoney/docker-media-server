@@ -8,7 +8,7 @@ nav_order: 6
 Decypharr mounts your debrid provider as a FUSE filesystem and exposes qBittorrent- and
 SABnzbd-compatible APIs, so Sonarr/Radarr see "instant" debrid files instead of a download
 queue. It runs from the media-server stack (`cy01/blackhole:v2.5`) with the fuse mount plumbing
-in the compose (`/mnt/:/mnt:rshared`, `/dev/fuse`, `SYS_ADMIN`, `apparmor:unconfined`).
+in the compose (`/mnt/debrid:/mnt:rshared`, `/dev/fuse`, `SYS_ADMIN`, `apparmor:unconfined`).
 
 ## First-run setup wizard
 
@@ -27,15 +27,22 @@ Config is written to `$CONFIG_DIR/decypharr/configs/config.json`.
 ## Visibility of the mount
 
 Decypharr creates its FUSE mount *inside* its own container: `:rshared` pushes it out to the host
-at `/mnt/decypharr`, and `jellyfin`/`sonarr`/`radarr`/`bazarr` receive it with `:rslave`. Both
-halves ship in the compose — nothing to add.
+at `/mnt/debrid/decypharr`, and `jellyfin`/`sonarr`/`radarr`/`bazarr` receive it with `:rslave`.
+Both halves ship in the compose — nothing to add.
+
+The propagation surface is a **dedicated host directory**, `/mnt/debrid`, bound into every
+consumer *as* `/mnt` (`/mnt/debrid:/mnt:rslave`). The FUSE mount lands at host
+`/mnt/debrid/decypharr`, but inside the containers it still appears at `/mnt/decypharr` — so no
+app-side path changes. This indirection exists so the containers never see the host's real
+`/mnt`: anything else mounted there (backup drives at `/mnt/backups`, other disks) stays
+invisible and unwritable to five media containers that would otherwise hold it read-write.
 
 Two details make this work, and both are easy to get wrong:
 
-- **Bind the parent, not the mountpoint.** The consumers bind `/mnt:/mnt:rslave`, not
-  `/mnt/decypharr:/mnt/decypharr`. A mount appearing *at* `/mnt/decypharr` belongs to the `/mnt`
-  mount, so it propagates to anyone watching `/mnt` — but a bind of the mountpoint itself captures
-  whatever was there at container start and never sees the FUSE mount arrive.
+- **Bind the parent, not the mountpoint.** The consumers bind `/mnt/debrid` (as `/mnt`), not
+  `/mnt/decypharr:/mnt/decypharr`. A mount appearing *at* `/mnt/decypharr` belongs to its parent
+  mount, so it propagates to anyone watching the parent — but a bind of the mountpoint itself
+  captures whatever was there at container start and never sees the FUSE mount arrive.
 - **The flags are asymmetric.** The producer shares (`:rshared`), the consumers receive
   (`:rslave`). A plain bind with no flag propagates nothing in either direction.
 
@@ -43,20 +50,44 @@ Together these mean **there is no startup order to respect**: consumers can boot
 and the mount shows up inside them when it's created. Restarting Decypharr re-propagates too,
 instead of leaving the others with a stale `Transport endpoint is not connected` handle.
 
+The host directory must exist before `just up` (docker would auto-create it root-owned, which
+also works, but explicit is cleaner):
+
+```bash
+sudo mkdir -p /mnt/debrid
+```
+
 If Decypharr's container is killed uncleanly, the host mountpoint can be left stale. Clear it
 before restarting:
 
 ```bash
-sudo fusermount -u -z /mnt/decypharr
+sudo fusermount -u -z /mnt/debrid/decypharr
 ```
 
-The one host-side prerequisite: `/mnt` must itself be a shared mount. systemd makes `/` rshared at
-boot, so this is normally already true — only worth checking if the consumers come up empty:
+The one host-side prerequisite: `/mnt/debrid`'s covering mount must be shared. systemd makes `/`
+rshared at boot, so this is normally already true — only worth checking if the consumers come up
+empty:
 
 ```bash
-findmnt -o TARGET,PROPAGATION /mnt   # want "shared"
-sudo mount --make-rshared /mnt       # if it isn't
+findmnt -o TARGET,PROPAGATION /mnt/debrid   # want "shared"
+sudo mount --make-rshared /mnt/debrid       # if it isn't
 ```
+
+### Migrating from the old `/mnt` bind
+
+Earlier revisions bound the host's real `/mnt` into the containers. To move an existing
+deployment:
+
+```bash
+just down                                    # or stop the media-server stack
+sudo fusermount -u -z /mnt/decypharr         # clear a stale FUSE mount if present
+sudo mkdir -p /mnt/debrid
+git pull && just up
+```
+
+No app reconfiguration is needed — every container path (`/mnt/decypharr`, root folders,
+libraries) is unchanged; only the host-side location moves. Update any host-side scripts or
+habits that referenced `/mnt/decypharr` to `/mnt/debrid/decypharr`.
 
 ## Integration with Sonarr/Radarr
 
