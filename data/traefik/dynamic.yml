@@ -34,7 +34,11 @@ http:
           logLevel: INFO
           crowdsecMode: stream
           updateMaxFailure: -1
-          streamStartupBlock: true
+          # false = fail-open at startup too: with crowdsec@file on the whole https
+          # entrypoint, `true` would stall ALL external traffic whenever Traefik
+          # (re)starts while CrowdSec is down. The cost: banned IPs slip through for
+          # the seconds until the first stream sync completes - acceptable here.
+          streamStartupBlock: false
           crowdsecLapiScheme: http
           crowdsecLapiHost: crowdsec:8080
           # Go template - Traefik renders dynamic config files through text/template.

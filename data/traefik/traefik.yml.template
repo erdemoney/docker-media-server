@@ -29,6 +29,9 @@ entryPoints:
     address: ":443"
     http:
       middlewares:
+        # crowdsec first: reject banned IPs before spending rate-limit tokens or
+        # adding headers to requests we're about to deny anyway.
+        - crowdsec@file
         - secHeaders@file
         - rateLimit@file
 
