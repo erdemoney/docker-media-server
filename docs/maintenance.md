@@ -87,7 +87,7 @@ Other recipes:
 | `just backup-list`          | list snapshots                                             |
 | `just backup-check`         | verify repository integrity (add `--read-data` for a full audit) |
 | `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.backup` |
-| `just backup-restore [<id>]`| restore into the repo working tree (default: latest)       |
+| `just backup-restore [<id>]`| dry-run preview, then restore into the repo working tree (default: latest)
 
 A daily systemd timer (place both units in `/etc/systemd/system/`):
 
@@ -115,9 +115,12 @@ WorkingDirectory=/srv/docker-media-server
 ExecStart=/usr/local/bin/just backup
 ```
 
-`just backup-restore` re-creates the repo working tree (`data/` + all `.env` files); `.env.backup`
-survives restores. Drill a restore into a scratch clone periodically — an untested backup is a
-gamble. Fragile-chain warning: this protects the repo, and native snapshots protect `$CONFIG_DIR`
+`just backup-restore` is **non-destructive**: it dry-runs first, prints exactly what would be
+restored/updated, and asks for confirmation before writing anything. Files present locally but
+missing from the snapshot are kept (no `--delete`); restored files overwrite current ones in
+place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.backup` survives
+restores. Drill a restore into a scratch clone periodically — an untested backup is a gamble.
+Fragile-chain warning: this protects the repo, and native snapshots protect `$CONFIG_DIR`
 + media, but a thief taking the box still wants you to have *remote* copies of `$CONFIG_DIR` too —
 if that's your threat model, point a second restic profile at it (see [The \*arrs](arrs)).
 

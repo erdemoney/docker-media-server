@@ -674,6 +674,10 @@ backup-prune:
         -v restic-cache:/root/.cache/restic \
         {{ restic_image }} forget --prune "${KEEP_ARGS[@]}"
 
+# Restore a snapshot into the repo working tree (default: latest). Non-destructive:
+# dry-runs first and shows exactly what would change, then asks before writing.
+# Files not in the snapshot are kept (no --delete); restored files replace current
+# ones in place (restic --overwrite=always).
 [group('Backups')]
 backup-restore SNAPSHOT="latest":
     #!/usr/bin/env bash
@@ -683,6 +687,22 @@ backup-restore SNAPSHOT="latest":
     grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
     grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
 
+    echo "previewing what the restore would change (dry run; nothing is written) ..."
+    docker run --rm \
+        --env-file .env.backup \
+        -v restic-cache:/root/.cache/restic \
+        -v "{{ justfile_directory() }}":/repo:ro \
+        {{ restic_image }} restore "{{ SNAPSHOT }}" --target / --dry-run -vv
+
+    echo
+    printf 'Files not in the snapshot are kept; the rest get overwritten in place. Restore %s into %s/? ' "{{ SNAPSHOT }}" "{{ justfile_directory() }}"
+    read -r confirm || confirm=""
+    case "$confirm" in
+    y|Y|yes|Yes|YES) : ;;
+    *) echo "aborted - nothing was restored."; exit 1 ;;
+    esac
+
+    echo
     echo "restoring {{ SNAPSHOT }} into {{ justfile_directory() }}/ ..."
     docker run --rm \
         --env-file .env.backup \
