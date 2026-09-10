@@ -213,5 +213,5 @@ ps:
 # Pre-create + chown service config dirs (run once after first clone)
 # SERVICES_DIR defaults to /mnt/storage/docker/data; override with `just dirs SERVICES_DIR=/custom/path`
 dirs SERVICES_DIR="/mnt/storage/docker/data" PUID="1000" PGID="1000":
-    mkdir -p "{{ SERVICES_DIR }}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,sabnzbd/config}
+    mkdir -p "{{ SERVICES_DIR }}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,sabnzbd/config,crowdsec/config,crowdsec/data}
     chown -R "{{ PUID }}":"{{ PGID }}" "{{ SERVICES_DIR }}"

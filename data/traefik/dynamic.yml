@@ -27,6 +27,28 @@ http:
         customRequestHeaders:
           X-Robots-Tag: "noindex, nofollow"
 
+    crowdsec:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO
+          crowdsecMode: stream
+          updateMaxFailure: -1
+          streamStartupBlock: true
+          crowdsecLapiScheme: http
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiKey: ${CROWDSEC_BOUNCER_API_KEY}
+          forwardedHeadersTrustedIPs:
+            - 127.0.0.1/8
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+          clientTrustedIPs:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10
+
   serversTransports:
     truenas-insecure:
       insecureSkipVerify: true

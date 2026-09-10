@@ -46,6 +46,26 @@ services:
       retries: 3
       start_period: 10s
 
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.8.1
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
+      GID: "0"
+      BOUNCER_KEY_TRAEFIK: ${CROWDSEC_BOUNCER_API_KEY}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${SERVICES_DIR}/crowdsec/config:/etc/crowdsec
+      - ${SERVICES_DIR}/crowdsec/data:/var/lib/crowdsec/data
+      - ${SERVICES_DIR}/traefik/logs:/logs:ro
+      - ${SERVICES_DIR}/traefik/crowdsec-acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+    networks:
+      - internal
+    labels:
+      - "traefik.enable=false"
+
 networks:
   external:
     external: true
