@@ -59,16 +59,6 @@ These are the outstanding items from first bring-up — do them once, then forge
 - **CrowdSec** — confirm the bouncer authed: `docker exec crowdsec cscli bouncers list`
   (see [Security](security)).
 
-## GPU (NVIDIA)
-
-If the compose gives Jellyfin a GPU, verify it's actually attached:
-
-```bash
-docker exec jellyfin nvidia-smi
-```
-
-Hardware specifics (driver injection, host updates) are host-dependent.
-
 ## Troubleshooting
 
 | Symptom                                      | Fix                                                                            |

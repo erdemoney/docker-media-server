@@ -43,8 +43,7 @@ A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini
 new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
 transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM, a small NVMe for the OS and
 config, and whatever storage you mount for the media library (external USB, NFS, ZFS pool, ...).
-The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat; anything more
-concurrent (multiple remote streams) is where a GPU like the P400 earns its keep.
+The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat.
 
 ## Operating system
 
