@@ -10,7 +10,7 @@ nav_order: 11
 | Command                         | What it does                                                                      |
 | ------------------------------- | --------------------------------------------------------------------------------- |
 | `just init`                     | create `.env` files and fill the interactive secrets (idempotent)                 |
-| `just up`                       | create networks + config dirs, then bring up every stack                          |
+| `just up`                       | create networks, config dirs, `acme.json` + rendered `traefik.yml`, then bring up every stack |
 | `just down`                     | tear every stack down                                                             |
 | `just update-all`               | pull fresh images + recreate changed containers                                   |
 | `just update <stack>`           | pull + recreate one stack, e.g. `just update traefik`                             |
@@ -21,21 +21,34 @@ nav_order: 11
 | `just ps`                       | list running containers                                                           |
 | `just logs <stack>`             | tail logs for a stack                                                             |
 | `just restart <stack>`          | restart a stack                                                                   |
-| `just validate`                 | `docker compose config -q` on every stack                                         |
-| `just dirs`                     | pre-create + chown service config dirs (idempotent; called by `just up`)          |
+| `just validate`                 | `docker compose config -q` on every stack (read-only — never writes a `.env`)     |
+| `just pull`                     | pull fresh images for every stack without recreating anything                     |
+| `just config <stack>`           | print the fully resolved compose config for one stack                             |
+| `just dirs`                     | create config dirs, `acme.json` (0600) + render `traefik.yml` (called by `just up`) |
 | `just bootstrap-torrentio`      | install the Torrentio indexer definition into prowlarr (see [Indexers](indexers)) |
 | `just wiring`                   | probe the internal network + print every URL/API key the \*arrs need (see [The \*arrs](arrs)) |
 | `just networks`                 | create the shared `internal`/`external` networks                                  |
 | `just backup-init`              | create the restic repository in `RESTIC_REPOSITORY` (idempotent; see below)      |
-| `just backup` / `backup-list` / `backup-check` / `backup-prune` / `backup-restore` | restic snapshots, integrity, retention, restore — see [Repo backups](#repo-backups-with-restic) |
+| `just backup` / `backup-list` / `backup-check` / `backup-prune` / `backup-restore` | restic snapshots, integrity, retention, restore — see [Repo backups](#offsite-restic-backups-of-the-repo) |
 
 Formatting and linting are handled by **pre-commit** directly (`pre-commit install` once, then
-hooks run automatically on every commit — same scope as CI: syntax + secret scanning). Gitleaks
-is auto-downloaded by pre-commit on first run (no manual install needed).
+hooks run automatically on every commit). The hooks cover YAML/JSON syntax and formatting, large
+files, merge markers, case conflicts, private keys and staged-secret scanning; CI runs the same
+set plus a full-history secret scan. Gitleaks is auto-downloaded by pre-commit on first run.
 
 The update flow the repo is built around: Renovate opens a PR → merge → `git pull` +
 `just update-all` (see [Updates](updates)); `just check-updates` gives the same picture from the
 CLI.
+
+## Traefik's config is rendered, not copied
+
+Traefik cannot read env vars or templates in its **static** config, but `ACME_EMAIL` has to be
+per-deployment. So the repo tracks `data/traefik/traefik.yml.template` and `just dirs` renders it
+to `$CONFIG_DIR/traefik/traefik.yml` (untracked) with the value from `stacks/traefik/.env`:
+
+- **edit the template**, never the rendered file — `just up` overwrites the output every run;
+- `dynamic.yml` and `crowdsec-acquis.yaml` need no rendering and are mounted as tracked files
+  (`dynamic.yml` resolves its one secret with Traefik's Go templating at runtime instead).
 
 ## Backups
 
@@ -87,8 +100,10 @@ on your own if you deviate — see below.)
 
 #### Other backends (on you)
 
-The recipes stay backend-agnostic, so a deviation is one edit in `.env.backup`. Set
-`RESTIC_REPOSITORY` and the matching credentials yourself:
+Any backend restic reaches over the network works with these recipes unchanged — set
+`RESTIC_REPOSITORY` and the matching credentials yourself. (A `local dir`, `sftp:` or
+`rclone:` repository additionally needs its path, key or config mounted into the restic
+container, which the recipes don't do.)
 
 | Backend       | `RESTIC_REPOSITORY` example               |
 | ------------- | ----------------------------------------- |
@@ -110,7 +125,7 @@ Other recipes:
 | Command                     | What it does                                               |
 | --------------------------- | ---------------------------------------------------------- |
 | `just backup-list`          | list snapshots                                             |
-| `just backup-check`         | verify repository integrity (add `--read-data` for a full audit) |
+| `just backup-check`         | verify repository integrity (for a full audit run `restic check --read-data` manually) |
 | `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.backup` |
 | `just backup-restore [<id>]`| dry-run preview, then restore into the repo working tree (default: latest) |
 | `just backup-schedule [<cal>]`| install a systemd timer running `just backup` (default `daily`; sudo) |
@@ -127,7 +142,7 @@ just backup-schedule "*-*-* 04:30:00"   # custom calendar, re-run to change
 This writes `restic-backup.{service,timer}` under `/etc/systemd/system` via sudo (with a
 confirmation prompt), resolves your actual `just` path into `ExecStart`, and enables the timer.
 On a host **without** systemd (Alpine, OpenWrt, a NAS scheduler), it prints the equivalent cron
-line instead of erroring — or use cron directly:
+line and exits non-zero — or use cron directly:
 
 ```
 0 4 * * * cd /srv/docker-media-server && /usr/local/bin/just backup
@@ -141,11 +156,10 @@ restored/updated, and asks for confirmation before writing anything. Files prese
 missing from the snapshot are kept (no `--delete`); restored files overwrite current ones in
 place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.backup` survives
 restores. Drill a restore into a scratch clone periodically — an untested backup is a gamble.
-Fragile-chain warning: with the default layout (`$CONFIG_DIR` inside the repo's `data/`) restic
-already covers everything this host can't rebuild — the \*arr databases included. If you point
-`CONFIG_DIR` at external storage, cover that separately — and either way, a thief taking the box
-still wants *remote* copies of the config state: point a second restic profile at `$CONFIG_DIR`
-if it lives outside the repo (see [The \*arrs](arrs)).
+Fragile-chain warning: `$CONFIG_DIR` is the repo's own `data/` dir, so restic already covers
+everything this host can't rebuild — the \*arr databases included. What it does *not* protect
+against is a thief taking the box: that needs the snapshots to live somewhere else, which is
+what the R2 repository above is for.
 
 > **`data/` is untracked app state.** Never `git clean` on the server — `-dfx` removes ignored
 > files, i.e. the whole config state. `git pull`/`reset --hard` are safe (they only touch tracked
@@ -161,8 +175,13 @@ These are the outstanding items from first bring-up — do them once, then forge
   the libraries in the Jellyfin UI pointing at subpaths of it (see [The \*arrs](arrs)). If those
   paths look empty inside the containers, check mount propagation (see [Decypharr](decypharr)).
 - **Root folders** in Radarr/Sonarr must point at paths the containers can actually reach.
+- **Jellyfin transcoding** — point *Playback → Transcode path* at `/transcodes` (a tmpfs, so
+  transcode scratch never hits disk) and enable VAAPI/QSV hardware acceleration; `/dev/dri` is
+  already passed in (see [Hardware](index#hardware) if the host has no iGPU).
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
-  working `CF_DNS_API_TOKEN`).
+  working `CF_DNS_API_TOKEN` **and** a non-empty `ACME_EMAIL`; `just dirs` warns if it's blank).
+  `$CONFIG_DIR/traefik/acme.json` must be a 0600 *file* — `just dirs` guarantees that, because a
+  directory there (what docker creates for a missing bind source) silently breaks cert storage.
 - **CrowdSec** — confirm the bouncer authed: `docker exec crowdsec cscli bouncers list`
   (see [Security](security)).
 

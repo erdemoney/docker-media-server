@@ -11,7 +11,7 @@ and `git pull` on the server.
 
 `just` and Docker are prerequisites. `just up` handles the ordering for you — it creates the
 shared networks and the per-service config dirs (both idempotent), then brings every stack up.
-Why the networks and dirs matter is covered in [Docker networking](arrs).
+Why the networks and dirs matter is covered in [The \*arrs](arrs).
 
 ## Fork first
 
@@ -29,12 +29,15 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 
 Run `just init` — it creates each stack's `.env` and walks you through **every** variable:
 
-- `CONFIG_DIR` is asked first and defaults to the repo checkout's `data/` dir — Enter
-  uses it (a relative answer is auto-resolved to an absolute path). App configs live here
-- `DOMAIN` is prompted once; both are synced to every stack
+- `CONFIG_DIR` is not asked: it is always the repo checkout's `data/` dir. App configs,
+  `acme.json` and Traefik's rendered config live there, which is also what the restic
+  backup covers — keeping them together is the whole point, so it isn't configurable
+- `DOMAIN` is prompted once and synced to every stack that defines it (traefik, media-server)
 - Subdomains default to the example values — Enter to keep, type to change;
   `ENV_PUID`/`ENV_PGID` instead propose the uid/gid of the user running `just` (Enter to
   use), so container files match your user — they fall back to `1000` if you run as root
+- `ACME_EMAIL` is your Let's Encrypt account address — `just dirs` renders it into
+  `traefik.yml`; leave it empty and no certificates will be issued
 - `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
 - Explains each Cloudflare secret, then **confirms before opening the page in your
@@ -55,10 +58,11 @@ Set each variable (see `stacks/*/.env.example`):
 
 | Variable                        | Where it lives | What it's for                                                    |
 | ------------------------------- | -------------- | ---------------------------------------------------------------- |
-| `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
+| `DOMAIN`                        | traefik + media-server | apex domain; every `SUB_DOMAIN_*` entry extends it       |
 | `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
-| `CONFIG_DIR`                    | all stacks     | directory for app configs on disk (defaults to the repo's `data/` dir) |
-| `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config dirs (init proposes the running user's ids) |
+| `CONFIG_DIR`                    | traefik + media-server | app config dir — derived, always the repo's `data/` dir  |
+| `ACME_EMAIL`                    | traefik        | Let's Encrypt account address (rendered into `traefik.yml`)      |
+| `ENV_PUID` / `ENV_PGID`         | media-server   | user/group owning the config dirs (init proposes the running user's ids) |
 | `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
 | `CROWDSEC_BOUNCER_API_KEY`      | traefik        | CrowdSec ↔ Traefik shared key (see below)                       |
@@ -120,7 +124,7 @@ token. How the tunnel's public hostnames route to Traefik is covered in [Ingress
 ## 3. First boot
 
 ```bash
-just up          # creates networks + config dirs, then brings every stack up in order
+just up          # creates networks, config dirs, acme.json + traefik.yml, then brings up every stack
 just ps          # confirm everything is running
 ```
 

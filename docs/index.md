@@ -35,7 +35,7 @@ host-agnostic.
 
 Media flow: Prowlarr finds releases (incl. the Torrentio debrid indexer) → Sonarr/Radarr grab
 them → Decypharr resolves debrid/Usenet into instant files on a FUSE mount → \*arrs import into
-the ZFS library → Jellyfin streams to clients; Seerr handles requests from users.
+the library on the debrid mount → Jellyfin streams to clients; Seerr handles requests from users.
 
 **HTTPS comes out of the box.** Traefik's ACME provider creates the DNS-01 challenge through
 Cloudflare (`CF_DNS_API_TOKEN`) and issues a **Let's Encrypt wildcard certificate for
@@ -46,9 +46,13 @@ reached from the public internet, LAN, or Tailnet. No per-app TLS configuration 
 
 A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150
 new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
-transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM and a small NVMe for the OS and config — this stack streams from debrid
-and never stores a media library on the host.
-The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat.
+transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM and a small NVMe for the OS and
+config — this stack streams from debrid and never stores a media library on the host.
+
+The compose passes `/dev/dri` into Jellyfin so that iGPU is actually used. **If your host has no
+`/dev/dri`** (a VM without GPU passthrough, or a CPU with no iGPU) the container will refuse to
+start — delete the `devices:` block from the `jellyfin` service in
+`stacks/media-server/compose.yaml` and it falls back to CPU transcoding.
 
 ## Operating system
 
@@ -77,7 +81,7 @@ justfile                 ops recipes (just up, just update-all, ...)
 | Page                       | What it covers                                                       |
 | -------------------------- | -------------------------------------------------------------------- |
 | [Quickstart](quickstart)   | env files, where every secret comes from, first `just up`            |
-| [Docker networking](arrs)  | shared networks, internal DNS names, API-key wiring between all apps |
+| [The \*arrs](arrs)         | shared networks, internal DNS names, API-key wiring between all apps |
 | [Indexers](indexers)       | Prowlarr, the Torrentio debrid indexer, AltHub                       |
 | [Decypharr](decypharr)     | debrid gateway: wizard, arr integration, mounts                      |
 | [Ingress](ingress)         | Traefik + Cloudflare tunnel: public hostnames, cache bypass, geolock |
@@ -87,14 +91,16 @@ justfile                 ops recipes (just up, just update-all, ...)
 | [Maintenance](maintenance) | day-to-day ops, backups, post-deploy checks                          |
 
 All absolute host paths in this wiki are written as the compose env vars they map to —
-`$CONFIG_DIR` (app configs) is defined per stack in `stacks/*/.env`. Media is served from the
+`$CONFIG_DIR` (app configs) is the repo's own `data/` dir, written into `stacks/traefik/.env`
+and `stacks/media-server/.env` by `just init`. Media is served from the
 debrid FUSE mount, so there is no local media directory to configure.
 
 ## Additional services
 
 The core stack covers media acquisition, management, and streaming. A few extras pair well if you
 want them — drop a compose file into `stacks/` and they'll join the same `internal` network
-automatically:
+automatically once you add the folder to `stack_list` in the justfile (and to the stack loop
+in `.github/workflows/ci.yml`):
 
 - **Homarr** (`ghcr.io/homarr-labs/homarr`) — lightweight dashboard with widgets for each app.
   Point it at the internal service URLs (`http://sonarr:8989`, ...) and it just works.

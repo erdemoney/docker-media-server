@@ -13,9 +13,12 @@ decisions per router.
 
 - `crowdsec` container (`crowdsecurity/crowdsec:v1.8.1`) — analysis engine + LAPI on the
   `internal` network at `crowdsec:8080`. It reads Traefik's JSON access log via
-  `data/traefik/crowdsec-acquis.yaml` (repo-relative path into the traefik stack).
+  `$CONFIG_DIR/traefik/crowdsec-acquis.yaml` (tracked in the repo at `data/traefik/`).
 - Traefik plugin `bouncer` — the **`crowdsec@file`** middleware defined in
-  `data/traefik/dynamic.yml` (stream mode, key from `${CROWDSEC_BOUNCER_API_KEY}`).
+  `$CONFIG_DIR/traefik/dynamic.yml` (tracked at `data/traefik/`), in stream mode. The LAPI key
+  is resolved with the Go template `{{ env "CROWDSEC_BOUNCER_API_KEY" }}`: Traefik renders
+  dynamic config files as Go templates and does **not** substitute shell-style `${VAR}`, which
+  would be sent to LAPI verbatim and fail authentication silently.
 
 ## Enable and verify
 

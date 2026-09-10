@@ -39,7 +39,8 @@ over the local `just check-updates` (which stays useful for a quick CLI look).
   auto-discovered repo-config names (`renovate.json`, `.renovaterc`, ...) so Renovate loads it as
   _global_ config — the only place global-only options like `repositories` are accepted. It
   restricts Renovate to the `docker-compose` manager (only `image:` lines).
-- minor/patch bumps are grouped into one PR; **major** bumps each get their own PR.
+- minor/patch bumps are grouped into one PR; **major** bumps go to a separate PR, one per
+  dependency (`separateMultipleMajor`).
 - `automerge: false` — nothing merges without you.
 - A **dependency dashboard** issue lists every managed image and which have updates pending; the
   schedule/blocker per dependency can be toggled via issue comments.
