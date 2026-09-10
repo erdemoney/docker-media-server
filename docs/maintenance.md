@@ -122,6 +122,11 @@ already covers app config state, so *media* is what native snapshots target. If 
 still wants *remote* copies of the config state: point a second restic profile at `$CONFIG_DIR`
 if it lives outside the repo (see [The \*arrs](arrs)).
 
+> **`data/` is untracked app state.** Never `git clean` on the server — `-dfx` removes ignored
+> files, i.e. the whole config state. `git pull`/`reset --hard` are safe (they only touch tracked
+> files). And keep the working tree clean (no uncommitted changes) before `just backup-restore`,
+> otherwise restored versions of the tracked `data/traefik/*.yml` show up as diffs.
+
 ## Post-deploy checks
 
 These are the outstanding items from first bring-up — do them once, then forget:
