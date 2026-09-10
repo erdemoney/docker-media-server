@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "repositories": ["erdemoney/docker-media-server"],
+  "gitAuthor": "renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>",
   "enabledManagers": ["docker-compose"],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Media stack dependency dashboard",

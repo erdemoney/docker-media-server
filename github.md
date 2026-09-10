@@ -13,7 +13,11 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
   `workflow_dispatch`).
 - `renovate.json` restricts Renovate to the `docker-compose` manager, so it only looks at
   `image:` lines in the compose files. Config summary:
-  - `config:recommended` — sane global defaults (onboarding PR, dependency dashboard, ...)
+  - `config:recommended` — sane global defaults (dependency dashboard, ...)
+  - `repositories` — `erdemoney/docker-media-server` (self-hosted Renovate needs the repo
+    told explicitly; the Action does not auto-discover)
+  - `gitAuthor` — commits are authored as `renovate[bot]` (avoids Mend's default
+    unsigned-commit warning)
   - `schedule: ["* 6 * * *"]` — only act in the 06:00 UTC window
   - minor/patch bumps are **grouped into one PR**; major bumps each get their own PR
   - `automerge: false` everywhere — nothing is merged without you
@@ -40,11 +44,12 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
 2. Set the `RENOVATE_TOKEN` secret (above).
 3. Push everything: `git push origin main`.
 4. Run once manually: GitHub -> Actions -> _Renovate_ -> _Run workflow_, or wait for the
-   cron. Renovate opens an "onboarding" PR adding a `renovate/configure` baseline.
-5. Merge the onboarding PR. Renovate then opens real dependency PRs as newer tags appear.
+   cron. The first run opens the dependency dashboard and starts PRs for any outdated tags.
 
-If every image is already current (see `just check-updates`), there are simply no PRs yet —
-the first ones appear when a newer tag is published.
+Because `renovate.json` already lives on the default branch, there's no "onboarding" PR —
+Renovate goes straight to scanning. If every image is already current (see
+`just check-updates`), there are simply no PRs yet — the first ones appear when a newer tag
+is published.
 
 ## Day-to-day flow (on TrueNAS)
 
