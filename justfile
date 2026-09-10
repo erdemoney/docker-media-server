@@ -8,7 +8,7 @@ default:
     just --list
 
 # Copy .env.example → .env for every stack (skips files that already exist)
-env:
+init:
     @for s in {{ stack_list }}; do \
         if [ ! -f "stacks/$$s/.env" ]; then \
             cp "stacks/$$s/.env.example" "stacks/$$s/.env" \

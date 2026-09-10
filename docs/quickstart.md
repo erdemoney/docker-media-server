@@ -30,7 +30,7 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 Every stack needs its `.env` populated from the example:
 
 ```bash
-just env
+just init
 ```
 
 This copies each `.env.example` → `.env`, skipping any that already exist (safe to re-run).
