@@ -28,10 +28,8 @@ jobs:
           set -euo pipefail
           for stack in traefik cloudflared media-server; do
             echo "::group::docker compose config stacks/$stack"
-            docker compose \
-              -f "stacks/$stack/compose.yaml" \
-              --env-file "stacks/$stack/.env.example" \
-              config -q
+            cp "stacks/$stack/.env.example" "stacks/$stack/.env"
+            docker compose -f "stacks/$stack/compose.yaml" config -q
             echo "::endgroup::"
           done
 

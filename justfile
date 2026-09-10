@@ -208,8 +208,10 @@ networks:
     docker network inspect external >/dev/null 2>&1 || docker network create external
 
 # Validate every compose file against the docker compose schema
+# (seeds .env from the example if missing, so a fresh checkout validates too)
 validate:
     @for s in {{ stack_list }}; do \
+        if [ ! -f "stacks/$$s/.env" ]; then cp "stacks/$$s/.env.example" "stacks/$$s/.env"; fi; \
         echo "-- stacks/$$s/compose.yaml" \
         && docker compose -f "stacks/$$s/compose.yaml" config -q || exit 1 \
     ; done
