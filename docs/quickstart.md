@@ -13,6 +13,18 @@ and `git pull` on the server.
 shared networks and the per-service config dirs (both idempotent), then brings every stack up.
 Why the networks and dirs matter is covered in [Docker networking](arrs).
 
+## Fork first
+
+This repo is meant to be **forked**. Fork it to your own GitHub account, then clone your fork —
+that gives you a personal copy to customize (domain, secrets, service list) while still being able
+to pull upstream improvements:
+
+```bash
+git clone git@github.com:<you>/docker-media-server.git ~/docker/media-server
+cd ~/docker/media-server
+git remote add upstream git@github.com:erdemoney/docker-media-server.git   # optional
+```
+
 ## 1. Copy and fill the env files
 
 Every stack needs its `.env` populated from the example:
