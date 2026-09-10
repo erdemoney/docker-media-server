@@ -20,6 +20,13 @@ config, and whatever storage you mount for the media library (external USB, NFS,
 The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat; anything more
 concurrent (multiple remote streams) is where a GPU like the P400 earns its keep.
 
+## Operating system
+
+**Debian** (stable) is the safe default — minimal, long support cycles, and every Docker guide
+assumes it. If you're running Proxmox, spin up a Debian **LXC container** instead of a full VM;
+it shares the host kernel (so Docker works natively) and uses a fraction of the RAM and disk a
+VM would.
+
 ```text
                         Internet
                            |
