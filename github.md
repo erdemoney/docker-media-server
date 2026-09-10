@@ -24,8 +24,9 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
   - `schedule: ["* 6 * * *"]` — only act in the 06:00 UTC window
   - minor/patch bumps are **grouped into one PR**; major bumps each get their own PR
   - `automerge: false` everywhere — nothing is merged without you
-  - no dependency dashboard (keeps the token simple; pending updates are visible via
-    Renovate PRs or `just check-updates`)
+  - a **dependency dashboard issue** (`Media stack dependency dashboard`) lists every managed
+    image and which have updates pending; you can toggle schedule/blocker per dependency via
+    issue comments
 - Renovate keeps our deliberate pin philosophy: it bumps exact tags (`:v3.4.1` -> `:v3.5.0`),
   never turns them into floating `:latest`.
 
