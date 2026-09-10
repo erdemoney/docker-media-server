@@ -45,6 +45,21 @@ Take your storage's native snapshot/backup mechanism to the following:
 Nothing in compose is precious — any container is one `just up` from a clean slate. The config
 directory is the only state you can't rebuild; if you snapshot exactly one thing, snapshot that.
 
+### Offsite backups with restic
+
+Native snapshots don't protect against a dead disk or a stolen box — keep an **offsite copy** of
+`$SERVICES_DIR` with [restic](https://restic.net). It deduplicates, encrypts, and backs up to
+most object storage (S3-compatible, Backblaze B2, SFTP, ...):
+
+```bash
+restic -r b2:my-bucket:media-backup init          # once
+restic -r b2:my-bucket:media-backup backup $SERVICES_DIR   # daily via cron/systemd timer
+```
+
+Point it at the config dir (movie/TV show *databases*, watch history, and app settings live in
+each app's config) rather than raw media — media is re-downloadable, your Sonarr/Radarr/Jellyfin
+metadata is not. Test restores periodically; an untested backup is a gamble.
+
 ## Post-deploy checks
 
 These are the outstanding items from first bring-up — do them once, then forget:
