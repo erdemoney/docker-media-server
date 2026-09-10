@@ -125,41 +125,43 @@ init:
         fi
     }
 
-    require_value() {   # FILE VAR [hint] [normalizer]: required input; loops until non-empty
-        local file="$1" var="$2" hint="${3:-}" norm="${4:-}" cur ans
-        while :; do
-            cur=$(get_var "$file" "$var") || true
-            if [ -n "$cur" ]; then
-                printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
-                read -r ans || { echo "  input closed - leaving $var as-is"; return 1; }
-                [ -z "$ans" ] && return 0
+    require_value() {   # FILE VAR [hint] [normalizer] [default]: fills unless typed otherwise
+        local file="$1" var="$2" hint="${3:-}" norm="${4:-}" dfault="${5:-}" cur ans
+        cur=$(get_var "$file" "$var") || true
+        if [ -n "$cur" ]; then
+            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            read -r ans || ans=""
+            [ -z "$ans" ] && return 0
+        else
+            if [ -n "$dfault" ]; then
+                printf '  %s [%s, Enter to use] > ' "$var" "$dfault"
+            elif [ -n "$hint" ]; then
+                printf '  %s [%s] > ' "$var" "$hint"
             else
-                if [ -n "$hint" ]; then
-                    printf '  %s [%s] > ' "$var" "$hint"
-                else
-                    printf '  %s > ' "$var"
-                fi
-                read -r ans || { echo "  input closed - $var is still unset"; return 1; }
-                if [ -z "$ans" ]; then
-                    echo "  required - enter a path"
-                    continue
-                fi
+                printf '  %s > ' "$var"
             fi
-            if [ -n "$norm" ]; then
-                ans=$("$norm" "$ans") || true
+            read -r ans || ans=""
+            [ -z "$ans" ] && ans="$dfault"
+            if [ -z "$ans" ]; then
+                echo "  required - enter a path"
+                return 1
             fi
-            if [ "$ans" != "$cur" ]; then
-                set_all "$var" "$ans"
-            fi
-            return 0
-        done
+        fi
+        if [ -n "$norm" ]; then
+            ans=$("$norm" "$ans") || true
+        fi
+        if [ "$ans" != "$cur" ]; then
+            set_all "$var" "$ans"
+        fi
     }
 
-    echo "== Config directory (required) =="
+    echo "== Config directory =="
     printf '%s\n' \
-        '  Where app configs + acme.json live on this host, outside the repo checkout' \
-        '  (the repo holds code; this holds state). Relative paths are auto-absolutized.'
-    require_value "$TRAEFIK_ENV" CONFIG_DIR "e.g. /srv/media-server/data" abs_path
+        '  Where app configs + acme.json live on this host. Defaults to the repo' \
+        "  checkout's data/ dir ($(abs_path "{{ justfile_directory() }}/data")) -" \
+        '  `just init` runs on the server, so that is a real local path. Type a' \
+        '  relative path to absolutize it, or point it at storage on a NAS.'
+    require_value "$TRAEFIK_ENV" CONFIG_DIR "" abs_path "$(abs_path "{{ justfile_directory() }}/data")"
     echo
 
     echo "== Domain and paths (shared across stacks) =="
@@ -501,15 +503,26 @@ ps:
 # Bootstrap the Torrentio indexer definition into prowlarr's config dir from the
 # Prowlarr-Indexers repo (see docs/indexers.md).
 # Idempotent; re-run to re-install. Requires git + network; run on the server.
-# Not the default CONFIG_DIR? pass it positionally: just bootstrap-torrentio /custom/path
-bootstrap-torrentio CONFIG_DIR="/mnt/storage/docker/data":
-    @TMP="$$(mktemp -d)" \
-    && git clone --depth 1 --filter=blob:none https://github.com/dreulavelle/Prowlarr-Indexers "$$TMP" >/dev/null 2>&1 \
-    && mkdir -p "{{ CONFIG_DIR }}/prowlarr/Definitions/Custom" \
-    && cp "$$TMP/Custom/torrentio.yml" "{{ CONFIG_DIR }}/prowlarr/Definitions/Custom/torrentio.yml" \
-    && rm -rf "$$TMP" \
-    && echo "installed {{ CONFIG_DIR }}/prowlarr/Definitions/Custom/torrentio.yml"
-    @docker compose -f stacks/media-server/compose.yaml restart prowlarr 2>/dev/null \
+# CONFIG_DIR is read from stacks/media-server/.env (fallback the repo's data/ dir);
+# override positionally: just bootstrap-torrentio /custom/path
+bootstrap-torrentio CONFIG_DIR="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -n "{{ CONFIG_DIR }}" ]; then
+        CONFIG_DIR="{{ CONFIG_DIR }}"
+    else
+        CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+        CONFIG_DIR="${CONFIG_DIR:-{{ justfile_directory() }}/data}"
+    fi
+
+    TMP="$(mktemp -d)"
+    trap 'rm -rf "$TMP"' EXIT
+    git clone --depth 1 --filter=blob:none https://github.com/dreulavelle/Prowlarr-Indexers "$TMP" >/dev/null 2>&1
+    mkdir -p "$CONFIG_DIR/prowlarr/Definitions/Custom"
+    cp "$TMP/Custom/torrentio.yml" "$CONFIG_DIR/prowlarr/Definitions/Custom/torrentio.yml"
+    echo "installed $CONFIG_DIR/prowlarr/Definitions/Custom/torrentio.yml"
+    docker compose -f stacks/media-server/compose.yaml restart prowlarr 2>/dev/null \
         || echo "note: prowlarr is not running, the definition will load on next just up"
 
 # Print a wiring cheat sheet for the *arrs: probes intra-stack reachability and
@@ -646,8 +659,9 @@ wiring CONFIG_DIR="":
 # install). The backend lives in .env.backup: RESTIC_REPOSITORY selects it (local,
 # sftp:, s3:, b2:, rclone: ...) and RESTIC_PASSWORD encrypts it; everything in that
 # file is forwarded via docker run --env-file, so backend credentials added there are
-# forwarded too. Scope: the upstream repo working tree (every .env + data/) - the
-# $CONFIG_DIR app state belongs to your storage native snapshots, not this repo.
+# forwarded too. Scope: the repo working tree - every .env plus data/ (with the default
+# layout that includes the $CONFIG_DIR app config state too). If you point CONFIG_DIR
+# at external storage, cover it with native snapshots / a second restic profile.
 # Configure .env.backup with `just init`, or copy .env.backup.example by hand.
 [group('Backups')]
 backup-init:

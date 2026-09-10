@@ -116,9 +116,11 @@ restored/updated, and asks for confirmation before writing anything. Files prese
 missing from the snapshot are kept (no `--delete`); restored files overwrite current ones in
 place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.backup` survives
 restores. Drill a restore into a scratch clone periodically — an untested backup is a gamble.
-Fragile-chain warning: this protects the repo, and native snapshots protect `$CONFIG_DIR`
-+ media, but a thief taking the box still wants you to have *remote* copies of `$CONFIG_DIR` too —
-if that's your threat model, point a second restic profile at it (see [The \*arrs](arrs)).
+Fragile-chain warning: with the default layout (`$CONFIG_DIR` inside the repo's `data/`) restic
+already covers app config state, so *media* is what native snapshots target. If you point
+`CONFIG_DIR` at external storage, cover that separately — and either way, a thief taking the box
+still wants *remote* copies of the config state: point a second restic profile at `$CONFIG_DIR`
+if it lives outside the repo (see [The \*arrs](arrs)).
 
 ## Post-deploy checks
 

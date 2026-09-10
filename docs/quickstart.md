@@ -29,8 +29,8 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 
 Run `just init` — it creates each stack's `.env` and walks you through **every** variable:
 
-- `CONFIG_DIR` is asked **first and is required** — where app configs live on this host,
-  outside the repo checkout. A relative answer is auto-resolved to an absolute path
+- `CONFIG_DIR` is asked first and defaults to the repo checkout's `data/` dir — Enter
+  uses it (a relative answer is auto-resolved to an absolute path). App configs live here
 - `DOMAIN` is prompted once; both are synced to every stack
 - Subdomains and `ENV_PUID`/`ENV_PGID` default to the example values — Enter to keep,
   type to change
@@ -56,7 +56,7 @@ Set each variable (see `stacks/*/.env.example`):
 | ------------------------------- | -------------- | ---------------------------------------------------------------- |
 | `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
 | `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
-| `CONFIG_DIR`                  | all stacks     | directory for app configs on disk, e.g. `/srv/media-server/data` |
+| `CONFIG_DIR`                  | all stacks     | directory for app configs on disk (defaults to the repo's `data/` dir) |
 | `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config and media files                     |
 | `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |

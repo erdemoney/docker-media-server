@@ -3,5 +3,14 @@
 !.env.example
 !.env.backup.example
 
+data/jellyfin/
+data/seerr/
+data/radarr/
+data/sonarr/
+data/prowlarr/
+data/profilarr/
+data/bazarr/
+data/decypharr/
+data/crowdsec/
 data/traefik/acme.json
 data/traefik/logs/
