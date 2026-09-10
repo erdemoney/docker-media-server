@@ -113,17 +113,18 @@ profile step is easy to forget.
 ## Root folders and mounts
 
 Sonarr/Radarr root folders must point at paths inside their own containers. In this stack the
-library lives on Decypharr's FUSE mount (`/mnt/decypharr`), which is already bound into every
+library lives on Decypharr's FUSE mount (`/mnt/decypharr`), which is already reachable from every
 service that touches media files — `sonarr`, `radarr`, `bazarr` (subtitles land next to the
 video), and `jellyfin` (playback):
 
 ```yaml
-- /mnt/decypharr:/mnt/decypharr:rslave
+- /mnt:/mnt:rslave
 ```
 
-`:rslave` is what makes the mount *appear* inside those containers when Decypharr creates it (see
-[Decypharr](decypharr) for the propagation details). Nothing to add by hand — just point each
-app's root folder, and Jellyfin's libraries, at subpaths of that mount.
+`:rslave` on the parent `/mnt` is what makes the mount *appear* inside those containers whenever
+Decypharr creates it, with no startup ordering required (see [Decypharr](decypharr) for why it's
+the parent and not the mountpoint). Nothing to add by hand — just point each app's root folder,
+and Jellyfin's libraries, at subpaths of `/mnt/decypharr`.
 
 ## Imports are symlinks, not hardlinks
 

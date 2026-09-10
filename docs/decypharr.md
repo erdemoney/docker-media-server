@@ -27,10 +27,28 @@ Config is written to `$CONFIG_DIR/decypharr/configs/config.json`.
 ## Visibility of the mount
 
 Decypharr creates its FUSE mount *inside* its own container: `:rshared` pushes it out to the host
-at `/mnt/decypharr`, and `jellyfin`/`sonarr`/`radarr`/`bazarr` bind that path back in with
-`:rslave` to receive it. Both halves ship in the compose — nothing to add. The flags are
-asymmetric on purpose (producer shares, consumers receive); a plain bind would snapshot the mount
-table at container start and show an empty directory forever.
+at `/mnt/decypharr`, and `jellyfin`/`sonarr`/`radarr`/`bazarr` receive it with `:rslave`. Both
+halves ship in the compose — nothing to add.
+
+Two details make this work, and both are easy to get wrong:
+
+- **Bind the parent, not the mountpoint.** The consumers bind `/mnt:/mnt:rslave`, not
+  `/mnt/decypharr:/mnt/decypharr`. A mount appearing *at* `/mnt/decypharr` belongs to the `/mnt`
+  mount, so it propagates to anyone watching `/mnt` — but a bind of the mountpoint itself captures
+  whatever was there at container start and never sees the FUSE mount arrive.
+- **The flags are asymmetric.** The producer shares (`:rshared`), the consumers receive
+  (`:rslave`). A plain bind with no flag propagates nothing in either direction.
+
+Together these mean **there is no startup order to respect**: consumers can boot before Decypharr,
+and the mount shows up inside them when it's created. Restarting Decypharr re-propagates too,
+instead of leaving the others with a stale `Transport endpoint is not connected` handle.
+
+If Decypharr's container is killed uncleanly, the host mountpoint can be left stale. Clear it
+before restarting:
+
+```bash
+sudo fusermount -u -z /mnt/decypharr
+```
 
 The one host-side prerequisite: `/mnt` must itself be a shared mount. systemd makes `/` rshared at
 boot, so this is normally already true — only worth checking if the consumers come up empty:
