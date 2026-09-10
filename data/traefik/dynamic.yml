@@ -1,5 +1,18 @@
 http:
   middlewares:
+    dashboardAcl:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/16"
+          - "172.16.0.0/12"
+          - "10.0.0.0/8"
+          - "100.64.0.0/10"
+
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 50
+
     secHeaders:
       headers:
         customFrameOptionsValue: "SAMEORIGIN"
@@ -13,19 +26,6 @@ http:
         permissionsPolicy: "camera=(), microphone=(), geolocation=()"
         customRequestHeaders:
           X-Robots-Tag: "noindex, nofollow"
-
-    rateLimit:
-      rateLimit:
-        average: 100
-        burst: 50
-
-    dashboardAcl:
-      ipAllowList:
-        sourceRange:
-          - "192.168.0.0/16"
-          - "172.16.0.0/12"
-          - "10.0.0.0/8"
-          - "100.64.0.0/10"
 
   serversTransports:
     truenas-insecure:

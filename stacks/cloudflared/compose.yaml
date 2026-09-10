@@ -3,17 +3,18 @@ services:
     image: cloudflare/cloudflared:2026.8.3
     restart: unless-stopped
     command: tunnel run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+      TUNNEL_METRICS: 0.0.0.0:60123
     networks:
       - external
-    environment:
-      - "TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}"
-      - "TUNNEL_METRICS=0.0.0.0:60123"
     healthcheck:
       test: ["CMD", "cloudflared", "tunnel", "ready"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+
 networks:
   external:
     external: true

@@ -20,15 +20,6 @@ entryPoints:
         - secHeaders@file
         - rateLimit@file
 
-accessLog:
-  filePath: /var/log/traefik/access.log
-  format: json
-  fields:
-    headers:
-      defaultMode: drop
-      names:
-        User-Agent: keep
-
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
@@ -49,3 +40,12 @@ certificatesResolvers:
         resolvers:
           - "1.1.1.1:53"
           - "1.0.0.1:53"
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep

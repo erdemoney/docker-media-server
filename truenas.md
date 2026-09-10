@@ -1,126 +1,137 @@
 # TrueNAS dataset setup
 
-Goal: a single ZFS dataset tree that makes hardlinks work across the whole media stack
-(download host → library), so Radarr/Sonarr import via instant hardlink instead of copy+delete.
+Goal: two ZFS datasets that make hardlinks work across the whole media stack (download host →
+library) and keep snapshot/restore scopes clean.
 
-## Why one dataset
-
-Hardlinks only work within a single filesystem. In ZFS each dataset is its own filesystem, so if
-`movies/` and `downloads/` live in separate datasets, a download→library hardlink fails and the
-arrs silently fall back to copying (slow, doubles I/O and space on completion).
-
-What matters is filesystem identity, **not** the Docker mount paths — Docker bind-mounts of
-subdirectories inside the same dataset are all still the same filesystem, which is exactly what the
-compose file relies on. There is no need to mount the whole `media` dir in each container.
-
-## Target layout
+## Dataset layout
 
 ```
-/mnt/storage/docker/data/media/             <- single dataset: media
-├── movies/
-├── tv/
-└── downloads/
-    ├── incomplete/                         <- SABnzbd working dir
-    └── usenet/                             <- SABnzbd completed downloads
+storage                          pool
+├── docker  dataset (lz4)                      -> /mnt/storage/docker
+│   ├── stacks/                                compose files + .env  (git is the real backup)
+│   └── data/                                  app configs (radarr/, sonarr/, traefik/, ...)
+└── media  dataset (lz4, recordsize=1M)        -> /mnt/storage/media
+    ├── movies/
+    ├── tv/
+    └── downloads/
+        ├── incomplete/                        throwaway working dir (may be own dataset if
+        │                                      you want to exclude it from snapshots)
+        └── usenet/                            completed downloads -- SAME dataset as movies/tv
 ```
 
-- `DATA_DIR=/mnt/storage/docker/data` in `stacks/media-server/.env`
-- All paths below were created with `zfs create` for `/mnt/storage/docker/data` (or already exist),
-  and `media` itself is created as its own dataset:
+- `SERVICES_DIR=/mnt/storage/docker/data` in every stack's `.env`
+- `DATA_DIR=/mnt/storage/media` in `stacks/media-server/.env`
+- One dataset for ALL configs = one snapshot/restore unit. No per-service datasets needed.
+- Jellyfin transcodes run on a container `tmpfs` (RAM) — no dataset, nothing to snapshot or back up.
+
+## Why this layout
+
+- **Hardlinks** only work within one filesystem (one ZFS dataset). `movies/`, `tv/`, and the
+  completed `downloads/usenet/` all live inside the single `media` dataset, so Radarr/Sonarr import
+  via instant hardlink. What matters is filesystem identity, not Docker mount paths — bind-mounts of
+  subdirectories inside the same dataset are all the same filesystem.
+- **Snapshot scoping**: configs are tiny and critical (snapshot frequently), media is bulk
+  (snapshot daily/weekly). Separate datasets -> separate schedules, retention, and selective
+  replication.
+- **One-shot restore**: `zfs snapshot -r storage/docker@...` captures compose files + all configs
+  together — a full stack restore point.
+- `recordsize=1M` on `media` matches large media files; `lz4` is cheap everywhere else.
+- **Transcodes** are true throwaway: Jellyfin mounts a container `tmpfs` at `/transcodes` (RAM).
+  Nothing is written to disk, there is no dataset to snapshot or back up, and it clears itself on
+  container restart. RAM footprint is small (only the rolling transcode buffer, not the file). If
+  you ever add an SSD/NVMe pool you could optionally move transcodes there instead — the current
+  tmpfs approach is the zero-maintenance default.
+
+## Creating the layout (fresh)
 
 ```
-zfs create -o compression=lz4 -o recordsize=1M tank/storage/docker/data/media
-mkdir -p /mnt/storage/docker/data/media/{movies,tv,downloads/incomplete,downloads/usenet}
-chown -R <PUID>:<PGID> /mnt/storage/docker/data/media
+zfs create -o compression=lz4 storage/docker
+zfs create -o compression=lz4 -o recordsize=1M storage/media
+mkdir -p /mnt/storage/docker/{stacks,data}
+mkdir -p /mnt/storage/media/{movies,tv,downloads/incomplete,downloads/usenet}
+chown -R <PUID>:<PGID> /mnt/storage/docker/data /mnt/storage/media
 ```
 
-SABnzbd and every arr must see the *same* paths for downloads and library (see the volume mounts in
-`stacks/media-server/compose.yaml`).
+## Migrating from the current (nested) layout
 
-## If you already have per-category datasets
+Yes — **flatten** the old datasets into plain directories with a filesystem copy, then destroy the
+old datasets. Do NOT use `zfs send|recv` here: it preserves dataset boundaries, which is exactly
+what you're trying to collapse. `rsync`/`cp` lands the data as plain dirs inside the new datasets.
 
-If `movies` / `tv` / `downloads` were created as separate datasets, they are separate filesystems
-and hardlinks will not cross them. Migrate to the single-dataset layout:
-
-1. Snapshot everything first:
-
-```
-zfs snapshot -r tank/storage/docker/data@pre-migration
-```
-
-2. Rename the old datasets aside (keeps them intact as rollback insurance):
+1. **Get to a neutral state** — stop the stack (frees bind-mounts and stops writes). Note `down`,
+   not `stop`: stopped-but-unremoved containers still hold their mounts:
 
 ```
-zfs rename tank/storage/docker/data/media/movies   tank/storage/docker/data/.movies-old
-zfs rename tank/storage/docker/data/media/tv       tank/storage/docker/data/.tv-old
-zfs rename tank/storage/docker/data/media/downloads tank/storage/docker/data/.downloads-old
+docker compose -f /mnt/storage/docker/stacks/media-server/compose.yaml down
+docker compose -f /mnt/storage/docker/stacks/traefik/compose.yaml down
+docker compose -f /mnt/storage/docker/stacks/cloudflared/compose.yaml down
+docker compose -f /mnt/storage/docker/stacks/homarr/compose.yaml down
 ```
 
-   (`media` must exist as a dataset first — see the target layout above.)
+   If a `data -> data.old` rename from earlier is still pending, finish or abort it now that
+   nothing is using the mount (this step no longer needs `data.old` — see step 4).
 
-3. Create plain directories in their place:
-
-```
-mkdir -p /mnt/storage/docker/data/media/{movies,tv,downloads/incomplete,downloads/usenet}
-```
-
-4. Copy the data into the plain dirs with `rsync` in-place semantics so hardlinks are preserved
-   and files are removed from the old datasets as they go:
+2. **Inventory + snapshot** for rollback insurance:
 
 ```
-rsync -a --remove-source-files /mnt/storage/docker/data/.movies-old/     /mnt/storage/docker/data/media/movies/
-rsync -a --remove-source-files /mnt/storage/docker/data/.tv-old/         /mnt/storage/docker/data/media/tv/
-rsync -a --remove-source-files /mnt/storage/docker/data/.downloads-old/  /mnt/storage/docker/data/media/downloads/
+zfs list -r -o name,used,mountpoint storage
+zfs snapshot -r storage@pre-migration
 ```
 
-   (Using `--inplace` is not needed here; plain `-a` is fine. Protect `/etc/localtime`, config dirs,
-   and anything else that must remain on the old dataset.)
+3. **Create the target layout** (commands above).
 
-5. Verify nothing was lost before deleting the old datasets — compare sizes:
-
-```
-du -sh /mnt/storage/docker/data/media/movies /mnt/storage/docker/data/media/tv /mnt/storage/docker/data/media/downloads
-```
-
-6. After confirming data integrity and that the stack works (imports hardlink), destroy the old
-   datasets:
+4. **Flatten configs** (pick the correct source for your actual layout — e.g. `data.old` or the
+   original `data` dataset):
 
 ```
-zfs destroy tank/storage/docker/data/media/.movies-old
-zfs destroy tank/storage/docker/data/media/.tv-old
-zfs destroy tank/storage/docker/data/media/.downloads-old
+rsync -aH --info=progress2 /mnt/storage/docker/data.old/ /mnt/storage/docker/data/
 ```
 
-7. Set properties and ownership on the new dataset/tree:
+5. **Union media** into the single dataset — one rsync per source (sub)dataset into its target dir,
+   or a single rsync if your media is one nested tree:
 
 ```
-zfs set compression=lz4 recordsize=1M tank/storage/docker/data/media
-chown -R <PUID>:<PGID> /mnt/storage/docker/data/media
+rsync -aH --info=progress2 <old>/movies/     /mnt/storage/media/movies/
+rsync -aH --info=progress2 <old>/tv/         /mnt/storage/media/tv/
+rsync -aH --info=progress2 <old>/downloads/  /mnt/storage/media/downloads/
 ```
 
-## Alternative: zero-migration layout
+   (`-H` preserves existing hardlinks inside each source.)
 
-If you'd rather not consolidate datasets, you can keep per-category datasets *provided* the
-downloader's completed directory lives inside the same dataset as each library (so a hardlink is
-still same-filesystem). This is more mounts in the compose file, not a change to the file's logic:
+6. **Verify before deleting anything** — compare sizes, then spot-check dirs/files:
 
 ```
-media-movies/          dataset
-├── movies/
-└── downloads/usenet/  <- SABnzbd completed dir (same dataset as movies)
-media-tv/              dataset
-├── tv/
-└── downloads/usenet/  <- SABnzbd completed dir (same dataset as tv)
+du -sh <old-path>/movies /mnt/storage/media/movies
 ```
 
-Every volume source must swap to these paths and SABnzbd writes its completed downloads into each
-library's dataset. It works, but the single-dataset layout above is simpler and is the recommended
-target.
+7. **Fix ownership, then destroy** the old datasets only after verification:
 
-## Sizing / recordsize notes
+```
+chown -R <PUID>:<PGID> /mnt/storage/docker/data /mnt/storage/media
+zfs destroy <old-dataset> ...
+```
 
-- `recordsize=1M` matches how large media files are stored and read; ZFS still random-accesses small
-  blocks fine for typical metadata.
-- `compression=lz4` is cheap and effective on media + metadata.
-- Dataset snapshots (e.g. TrueNAS replication) will be far larger than the old per-category layout
-  once you also snapshot nearby config dirs — keep `/mnt/storage/docker/data` snapshots scoped.
+   Use `zfs destroy` — never `rm -rf` on a mounted dataset (leaves an empty dataset behind;
+   destroying a parent removes its children).
+
+8. **Deploy**: update `stacks/media-server/.env` (`DATA_DIR=/mnt/storage/media`), `docker compose up -d`.
+
+## Shared networks
+
+The stacks use two pre-created Docker networks, declared `external: true` in every compose file
+(intentional — non-external would create a project-isolated network per stack and break cross-stack
+routing). They survive daemon restarts but are wiped if the apps VM is ever rebuilt, so create them
+idempotently from the repo before first deploy:
+
+```
+cd /mnt/storage/docker/stacks && ./networks.sh
+```
+
+- `internal` — app-to-app traffic / routing between services and Traefik.
+- `external` — Traefik ↔ cloudflared WAN ingress.
+
+## Backups / replication
+
+- Snapshots: frequent on `docker` (configs incl. `acme.json`), daily/weekly on `media`.
+- Scope them: keep `docker` and `media` snapshot schedules separate (doesn't mix configs with bulk).
+- `incomplete/` can be excluded from media snapshots if made its own throwaway dataset.
