@@ -82,7 +82,7 @@ justfile                 ops recipes (just up, just update-all, ...)
 | [Maintenance](maintenance) | day-to-day ops, backups, post-deploy checks                          |
 
 All absolute host paths in this wiki are written as the compose env vars they map to —
-`$SERVICES_DIR` (app configs) is defined per stack in `stacks/*/.env`. Media is served from the
+`$CONFIG_DIR` (app configs) is defined per stack in `stacks/*/.env`. Media is served from the
 debrid FUSE mount, so there is no local media directory to configure.
 
 ## Additional services

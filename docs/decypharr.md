@@ -22,7 +22,7 @@ Visit `https://decypharr.<DOMAIN>` once:
 - **Mount configuration** — pick **DFS**, mount path `/mnt/decypharr` (what the \*arrs will import
   from), and a cache dir.
 
-Config is written to `$SERVICES_DIR/decypharr/configs/config.json`.
+Config is written to `$CONFIG_DIR/decypharr/configs/config.json`.
 
 ## Visibility of the mount
 

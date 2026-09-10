@@ -37,7 +37,7 @@ CLI.
 
 Take your storage's native snapshot/backup mechanism to the following:
 
-- **frequent on the config directory** (everything under `$SERVICES_DIR`, includes `acme.json`);
+- **frequent on the config directory** (everything under `$CONFIG_DIR`, includes `acme.json`);
   it changes and matters.
 - **daily/weekly on the media library.** Keep the schedules separate — don't mix config
   snapshots with bulk media.
@@ -48,12 +48,12 @@ directory is the only state you can't rebuild; if you snapshot exactly one thing
 ### Offsite backups with restic
 
 Native snapshots don't protect against a dead disk or a stolen box — keep an **offsite copy** of
-`$SERVICES_DIR` with [restic](https://restic.net). It deduplicates, encrypts, and backs up to
+`$CONFIG_DIR` with [restic](https://restic.net). It deduplicates, encrypts, and backs up to
 most object storage (S3-compatible, Backblaze B2, SFTP, ...):
 
 ```bash
 restic -r b2:my-bucket:media-backup init          # once
-restic -r b2:my-bucket:media-backup backup $SERVICES_DIR   # daily via cron/systemd timer
+restic -r b2:my-bucket:media-backup backup $CONFIG_DIR   # daily via cron/systemd timer
 ```
 
 Point it at the config dir (movie/TV show *databases*, watch history, and app settings live in

@@ -29,12 +29,12 @@ Radarr sync and grabs go to Decypharr for debrid streaming.
 
    ```bash
    just bootstrap-torrentio
-   # not the default SERVICES_DIR? pass it positionally: just bootstrap-torrentio /custom/path
+   # not the default CONFIG_DIR? pass it positionally: just bootstrap-torrentio /custom/path
    ```
 
    (For reference, the manual step it automates: place `torrentio.yml` from
    `https://github.com/dreulavelle/Prowlarr-Indexers` into
-   `$SERVICES_DIR/prowlarr/Definitions/Custom` and recreate prowlarr.)
+   `$CONFIG_DIR/prowlarr/Definitions/Custom` and recreate prowlarr.)
 
 2. Prowlarr → **Indexers** → `+` → search **Torrentio** → add it.
    - Paste your **Real-Debrid (or supported-debrid) API key** in the indexer key field — the

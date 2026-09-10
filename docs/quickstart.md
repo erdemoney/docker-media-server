@@ -41,7 +41,7 @@ Set each variable (see `stacks/*/.env.example`):
 | ------------------------------- | -------------- | ---------------------------------------------------------------- |
 | `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
 | `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
-| `SERVICES_DIR`                  | all stacks     | directory for app configs on disk, e.g. `/srv/media-server/data` |
+| `CONFIG_DIR`                  | all stacks     | directory for app configs on disk, e.g. `/srv/media-server/data` |
 | `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the config and media files                     |
 | `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
@@ -115,7 +115,7 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
 
 - Traefik downloaded the CrowdSec plugin on first start (needs outbound internet); a
   `Certificate` appears in the ACME panel for `*.DOMAIN`.
-- CrowdSec seeded its config under `$SERVICES_DIR/crowdsec/config` — see [Security](security).
+- CrowdSec seeded its config under `$CONFIG_DIR/crowdsec/config` — see [Security](security).
 - Jellyfin's admin account is created on first login (feed its key to Seerr later).
 - `docker exec jellyfin nvidia-smi` if you expect GPU transcoding (see
   [Maintenance](maintenance)).
