@@ -92,8 +92,8 @@ init:
         esac
     }
 
-    prompt_value() {   # FILE VAR [hint]: show current value, Enter keeps, type to change. Writes to every file defining VAR.
-        local file="$1" var="$2" hint="${3:-}" cur ans
+    prompt_value() {   # FILE VAR [hint] [normalizer]: show current value, Enter keeps, type to
+        local file="$1" var="$2" hint="${3:-}" norm="${4:-}" cur ans
         cur=$(get_var "$file" "$var") || true
         if [ -n "$cur" ]; then
             printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
@@ -103,14 +103,31 @@ init:
             printf '  %s > ' "$var"
         fi
         read -r ans || ans=""
-        if [ -n "$ans" ] && [ "$ans" != "$cur" ]; then
-            set_all "$var" "$ans"
+        if [ -n "$ans" ]; then
+            if [ -n "$norm" ]; then
+                ans=$("$norm" "$ans") || true
+            fi
+            if [ "$ans" != "$cur" ]; then
+                set_all "$var" "$ans"
+            fi
+        fi
+    }
+
+    abs_path() {   # print $1 as an absolute path, resolving relative against $PWD
+        case "$1" in
+            /*) p="$1" ;;
+            *) p="$PWD/$1" ;;
+        esac
+        if command -v realpath >/dev/null 2>&1; then
+            realpath -m "$p"
+        else
+            printf '%s\n' "$p"
         fi
     }
 
     echo "== Domain and paths (shared across stacks) =="
     prompt_value "$TRAEFIK_ENV" DOMAIN "your domain, e.g. example.com"
-    prompt_value "$TRAEFIK_ENV" CONFIG_DIR "config dir, e.g. /srv/media-server/data"
+    prompt_value "$TRAEFIK_ENV" CONFIG_DIR "config dir, e.g. /srv/media-server/data" abs_path
     echo
 
     echo "== traefik =="
@@ -254,6 +271,7 @@ networks:
 validate:
     @for s in {{ stack_list }}; do \
         if [ ! -f "stacks/$$s/.env" ]; then cp "stacks/$$s/.env.example" "stacks/$$s/.env"; fi; \
+        sed -i 's|^CONFIG_DIR=$|CONFIG_DIR=/tmp/ci-config|' "stacks/$$s/.env" || true; \
         echo "-- stacks/$$s/compose.yaml" \
         && docker compose -f "stacks/$$s/compose.yaml" config -q || exit 1 \
     ; done
@@ -414,7 +432,7 @@ df:
     docker system df
 
 # Bring the whole stack up (ensures networks + config dirs exist first)
-# Custom CONFIG_DIR? run `just dirs <path> [PUID PGID]` once first, then `just up`.
+# `just dirs` reads CONFIG_DIR from stacks/media-server/.env; override with `just dirs <path> [PUID PGID]`.
 up: networks dirs
     @for s in {{ stack_list }}; do \
         echo "-- $$s" \
@@ -795,8 +813,18 @@ backup-unschedule:
     echo "removed restic-backup.{timer,service} and stopped the timer."
 
 # Pre-create + chown service config dirs (idempotent; also called by `just up`)
-# CONFIG_DIR defaults to /mnt/storage/docker/data; override positionally: just dirs /custom/path
+# CONFIG_DIR is read from stacks/media-server/.env (fallback /mnt/storage/docker/data);
+# override positionally: just dirs /custom/path
 # No-op if the dirs already exist and ownership is already PUID:PGID.
-dirs CONFIG_DIR="/mnt/storage/docker/data" PUID="1000" PGID="1000":
-    mkdir -p "{{ CONFIG_DIR }}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,crowdsec/config,crowdsec/data}
-    chown -R "{{ PUID }}":"{{ PGID }}" "{{ CONFIG_DIR }}"
+dirs CONFIG_DIR="" PUID="1000" PGID="1000":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ -n "{{ CONFIG_DIR }}" ]; then
+        CONFIG_DIR="{{ CONFIG_DIR }}"
+    else
+        CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+        CONFIG_DIR="${CONFIG_DIR:-/mnt/storage/docker/data}"
+    fi
+    mkdir -p "$CONFIG_DIR"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,crowdsec/config,crowdsec/data}
+    chown -R "{{ PUID }}":"{{ PGID }}" "$CONFIG_DIR"

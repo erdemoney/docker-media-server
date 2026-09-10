@@ -23,7 +23,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/jellyfin/config:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/jellyfin/config:/config
     tmpfs:
       - /transcodes
     labels:
@@ -48,7 +48,7 @@ services:
       LOG_LEVEL: info
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/seerr/config:/app/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/seerr/config:/app/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.seerr.entrypoints=https"
@@ -70,7 +70,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/radarr:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/radarr:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.entrypoints=https"
@@ -96,7 +96,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/sonarr:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/sonarr:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.entrypoints=https"
@@ -122,7 +122,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/prowlarr:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/prowlarr:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prowlarr.entrypoints=https"
@@ -149,7 +149,7 @@ services:
       ORIGIN: https://${SUB_DOMAIN_PROFILARR}.${DOMAIN}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/profilarr/config:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/profilarr/config:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.profilarr.entrypoints=https"
@@ -171,7 +171,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${CONFIG_DIR}/bazarr/config:/config
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/bazarr/config:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bazarr.entrypoints=https"
@@ -200,7 +200,7 @@ services:
       PGID: ${ENV_PGID}
     volumes:
       - /mnt/:/mnt:rshared
-      - ${CONFIG_DIR}/decypharr/configs:/app
+      - ${CONFIG_DIR:?set CONFIG_DIR in the stack .env}/decypharr/configs:/app
     cap_add:
       - SYS_ADMIN
     devices:

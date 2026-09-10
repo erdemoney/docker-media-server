@@ -29,6 +29,7 @@ jobs:
           for stack in traefik cloudflared media-server; do
             echo "::group::docker compose config stacks/$stack"
             cp "stacks/$stack/.env.example" "stacks/$stack/.env"
+            sed -i 's|^CONFIG_DIR=$|CONFIG_DIR=/tmp/ci-config|' "stacks/$stack/.env" || true
             docker compose -f "stacks/$stack/compose.yaml" config -q
             echo "::endgroup::"
           done
