@@ -1,137 +1,120 @@
-# TrueNAS dataset setup
+# TrueNAS SCALE — platform notes for this stack
 
-Goal: two ZFS datasets that make hardlinks work across the whole media stack (download host →
-library) and keep snapshot/restore scopes clean.
+> This doc is our **operator's reference**: everything TrueNAS/ZFS-specific that the generic wiki
+> deliberately leaves out. It's a running note as much as a guide — re-read the sections that
+> match what you're doing. Runs on **TrueNAS SCALE 25.10.7**, Docker via the built-in apps VM.
 
-## Dataset layout
+## Layout
 
-```
-storage                          pool
-├── docker  dataset (lz4)                      -> /mnt/storage/docker
-│   ├── stacks/                                compose files + .env  (git is the real backup)
-│   └── data/                                  app configs (radarr/, sonarr/, traefik/, ...)
-└── media  dataset (lz4, recordsize=1M)        -> /mnt/storage/media
-    ├── movies/
-    ├── tv/
-    └── downloads/
-        ├── incomplete/                        throwaway working dir (may be own dataset if
-        │                                      you want to exclude it from snapshots)
-        └── usenet/                            completed downloads -- SAME dataset as movies/tv
-```
-
-- `SERVICES_DIR=/mnt/storage/docker/data` in every stack's `.env`
-- `DATA_DIR=/mnt/storage/media` in `stacks/media-server/.env`
-- One dataset for ALL configs = one snapshot/restore unit. No per-service datasets needed.
-- Jellyfin transcodes run on a container `tmpfs` (RAM) — no dataset, nothing to snapshot or back up.
-
-## Why this layout
-
-- **Hardlinks** only work within one filesystem (one ZFS dataset). `movies/`, `tv/`, and the
-  completed `downloads/usenet/` all live inside the single `media` dataset, so Radarr/Sonarr import
-  via instant hardlink. What matters is filesystem identity, not Docker mount paths — bind-mounts of
-  subdirectories inside the same dataset are all the same filesystem.
-- **Snapshot scoping**: configs are tiny and critical (snapshot frequently), media is bulk
-  (snapshot daily/weekly). Separate datasets -> separate schedules, retention, and selective
-  replication.
-- **One-shot restore**: `zfs snapshot -r storage/docker@...` captures compose files + all configs
-  together — a full stack restore point.
-- `recordsize=1M` on `media` matches large media files; `lz4` is cheap everywhere else.
-- **Transcodes** are true throwaway: Jellyfin mounts a container `tmpfs` at `/transcodes` (RAM).
-  Nothing is written to disk, there is no dataset to snapshot or back up, and it clears itself on
-  container restart. RAM footprint is small (only the rolling transcode buffer, not the file). If
-  you ever add an SSD/NVMe pool you could optionally move transcodes there instead — the current
-  tmpfs approach is the zero-maintenance default.
-
-## Creating the layout (fresh)
+Two datasets on pool `storage` (raidz2), mounted under `/mnt/storage`:
 
 ```
-zfs create -o compression=lz4 storage/docker
-zfs create -o compression=lz4 -o recordsize=1M storage/media
-mkdir -p /mnt/storage/docker/{stacks,data}
-mkdir -p /mnt/storage/media/{movies,tv,downloads/incomplete,downloads/usenet}
-chown -R <PUID>:<PGID> /mnt/storage/docker/data /mnt/storage/media
+storage/docker -> /mnt/storage/docker
+  stacks/        # this repo checkout -> /mnt/storage/docker/stacks
+  data/          # $SERVICES_DIR, app runtime state per service
+storage/media -> /mnt/storage/media   # $DATA_DIR, the library
+  movies/
+  tv/
+  downloads/     # rockets + usenet + incomplete, SAME dataset as movies/tv -> hardlinks work
 ```
 
-## Migrating from the current (nested) layout
+### Why
 
-Yes — **flatten** the old datasets into plain directories with a filesystem copy, then destroy the
-old datasets. Do NOT use `zfs send|recv` here: it preserves dataset boundaries, which is exactly
-what you're trying to collapse. `rsync`/`cp` lands the data as plain dirs inside the new datasets.
+- **Configs rebuildable, media not.** `docker/` gets frequent snapshots (small, changes often);
+  `media/` gets daily/weekly snapshots (bulk, rarely changes at the margins).
+- **ONE dataset for movies+tv+downloads** is the whole trick for the \*arrs: when Sonarr imports a
+  download it hard-links the file into the library instead of copying it. That only works within a
+  single dataset (same pool). The instant you split downloads out, every import becomes a copy and
+  your disk fills up twice as fast.
+- **`recordsize=1M`** on the media dataset for large media files (the pool default 128K costs
+  extra read amplification on sequential reads).
 
-1. **Get to a neutral state** — stop the stack (frees bind-mounts and stops writes). Note `down`,
-   not `stop`: stopped-but-unremoved containers still hold their mounts:
+### Fresh create (only needs doing once)
 
-```
-docker compose -f /mnt/storage/docker/stacks/media-server/compose.yaml down
-docker compose -f /mnt/storage/docker/stacks/traefik/compose.yaml down
-docker compose -f /mnt/storage/docker/stacks/cloudflared/compose.yaml down
-docker compose -f /mnt/storage/docker/stacks/homarr/compose.yaml down
-```
+```bash
+zfs create storage/docker
+zfs set compression=lz4 storage/docker
 
-If a `data -> data.old` rename from earlier is still pending, finish or abort it now that
-nothing is using the mount (this step no longer needs `data.old` — see step 4).
+zfs create storage/media
+zfs set recordsize=1M storage/media
+zfs set atime=off storage/media
 
-2. **Inventory + snapshot** for rollback insurance:
-
-```
-zfs list -r -o name,used,mountpoint storage
-zfs snapshot -r storage@pre-migration
-```
-
-3. **Create the target layout** (commands above).
-
-4. **Flatten configs** (pick the correct source for your actual layout — e.g. `data.old` or the
-   original `data` dataset):
-
-```
-rsync -aH --info=progress2 /mnt/storage/docker/data.old/ /mnt/storage/docker/data/
+# optional scratch dir inside media -> gets its own dataset so snapshots can exclude it
+zfs create storage/media/downloads_incomplete
 ```
 
-5. **Union media** into the single dataset — one rsync per source (sub)dataset into its target dir,
-   or a single rsync if your media is one nested tree:
+Keep `movies/`, `tv/`, `downloads/` as plain directories under `storage/media` — they must stay
+inside the one dataset. If you ever do separate datasets for them, hardlinks break.
 
+### Migrating an existing library onto this layout
+
+Must be a **copy/move that creates new files at the destination**, not a filesystem-level move:
+
+- `mv` a file **across** datasets on the same pool is actually a copy+unlink, so a one-shot
+  `mv storage/oldmedia/tv storage/media/` still ends up hard-linkable. What breaks it is
+  **rclone/`cp --reflink`/zfs-send**: rclone reduces copies to reflinks, zfs-send preserves
+  dataset structure, so files would not be real copies after a reflink-only move.
+- If you migrated with rclone carelessly, re-import a folder (do an in-place copy of its files)
+  or delete+re-add in the \*arrs rather than trusting links.
+
+## Repo location
+
+The repo lives at `/mnt/storage/docker/stacks` (dataset `storage/docker`), so compose files are
+snapshotted with the configs. `just dirs` pre-creates each service's dir under
+`/mnt/storage/docker/data` (`$SERVICES_DIR`) with the right ownership, and `just up` brings
+everything up.
+
+## Shared Docker networks
+
+`internal` and `external` are recreated by `just networks` / `just up` (idempotent).
+
+**Gotcha: TrueNAS apps-VM rebuilds wipe them.** Every TrueNAS update rebuilds the apps VM; the
+shared `external:true` networks are recreated then, so they come back — but a clean re-install
+of the apps system drops them. If containers start failing on DNS/network after reinstalling
+apps, run `just networks` and `just up`, that's the whole fix.
+
+## Backups / ZFS snapshots
+
+Drop-in snapshots (fail-fast, sendable off-box):
+
+```bash
+zfs snapshot -r storage/docker@manual-$(date +%F)   # configs + compose (this is the one that matters)
+zfs snapshot storage/media@manual-$(date +%F)       # library checkpoint
+
+zfs list -t snapshot                                 # inspect
+zfs destroy storage/docker@manual-$(date +%F)        # drop a bad one
 ```
-rsync -aH --info=progress2 <old>/movies/     /mnt/storage/media/movies/
-rsync -aH --info=progress2 <old>/tv/         /mnt/storage/media/tv/
-rsync -aH --info=progress2 <old>/downloads/  /mnt/storage/media/downloads/
+
+Then schedule: **hourly/daily on `storage/docker`** (small, changes constantly — includes
+`acme.json`), **daily/weekly on `storage/media`**. Keep the two schedules independent — never
+mix config snapshots with bulk media. Prune on a retention window, not by hand.
+
+If you gave `downloads_incomplete/` its own dataset, exclude it from the media snapshot schedule
+(packaged via `-o ... ` or just snapshot `storage/media` children you care about; simplest is to
+snapshot `storage/media` from inside the dataset so incomplete is included but cheap).
+
+Off-box: `zfs send -R storage/docker@latest | ssh offsite zfs recv backup/docker` (encrypt,
+compress, or use `syncoid`).
+
+## GPU (NVIDIA)
+
+Jellyfin is configured to use the NVIDIA GPU (P400). TrueNAS ships a **legacy driver sysext**
+that must be re-enrolled **after every TrueNAS update or reboot** — it does not survive updates:
+
+```bash
+# fetch/re-add the raw sysext for the running release, e.g. from the driver repo:
+#   https://truenas-drivers.zhouyou.info/25.10.7/nvidia.raw
+just restart media-server   # or the jellyfin service
+docker exec jellyfin nvidia-smi   # confirm GPU attached again
 ```
 
-(`-H` preserves existing hardlinks inside each source.)
+If `nvidia-smi` is missing inside Jellyfin after an update, the sysext is not enrolled —
+re-add it and recreate the container (the compose for this stack is read-only to this too:
+Jellyfin already requests the device; the host driver is the only moving part).
 
-6. **Verify before deleting anything** — compare sizes, then spot-check dirs/files:
+## Decypharr mount visibility
 
-```
-du -sh <old-path>/movies /mnt/storage/media/movies
-```
-
-7. **Fix ownership, then destroy** the old datasets only after verification:
-
-```
-chown -R <PUID>:<PGID> /mnt/storage/docker/data /mnt/storage/media
-zfs destroy <old-dataset> ...
-```
-
-Use `zfs destroy` — never `rm -rf` on a mounted dataset (leaves an empty dataset behind;
-destroying a parent removes its children).
-
-8. **Deploy**: update `stacks/media-server/.env` (`DATA_DIR=/mnt/storage/media`), `docker compose up -d`.
-
-## Shared networks
-
-The stacks use two pre-created Docker networks, declared `external: true` in every compose file
-(intentional — non-external would create a project-isolated network per stack and break cross-stack
-routing). They survive daemon restarts but are wiped if the apps VM is ever rebuilt, so create them
-idempotently from the repo before first deploy:
-
-```
-cd /mnt/storage/docker/stacks && just networks
-```
-
-- `internal` — app-to-app traffic / routing between services and Traefik.
-- `external` — Traefik ↔ cloudflared WAN ingress.
-
-## Backups / replication
-
-- Snapshots: frequent on `docker` (configs incl. `acme.json`), daily/weekly on `media`.
-- Scope them: keep `docker` and `media` snapshot schedules separate (doesn't mix configs with bulk).
-- `incomplete/` can be excluded from media snapshots if made its own throwaway dataset.
+The Decypharr DFS mount created inside its container propagates to the **host** at
+`/mnt/decypharr` (via the `:rshared` bind) — so you can inspect it from the TrueNAS shell, and
+any container that binds that path sees the same files. If you want a file-debugging spot for
+"does the arr see X", start there.
