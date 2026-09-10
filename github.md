@@ -34,13 +34,16 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
 - The repo is hosted on GitHub (it is: `github.com/erdemoney/docker-media-server`).
 - A Personal Access Token with write access to this repo, stored as the
   `RENOVATE_TOKEN` Actions secret:
-  1. Create a token at <https://github.com/settings/tokens>:
-     - Classic: scope `repo` (simplest).
-     - Fine-grained: `Contents`, `Pull requests`, `Issues` = read/write, restricted to this repo.
-  2. Store it once: `gh secret set RENOVATE_TOKEN` (run in the repo root).
 
-  (GitHub App install is _not_ needed — this is the self-hosted action setup, which only
-  needs the PAT.)
+1. Create a token at <https://github.com/settings/tokens>:
+   - Classic: scope `repo` (simplest — includes write access to push Renovate's branches).
+   - Fine-grained: `Contents`, `Pull requests`, `Issues` all **read and write** (not `read`),
+     restricted to this repo. Renovate pushes branches, so `Contents` must be _read and
+     write_ — `read` alone fails with `Write access to repository not granted`.
+2. Store it once: `gh secret set RENOVATE_TOKEN` (run in the repo root).
+
+(GitHub App install is _not_ needed — this is the self-hosted action setup, which only
+needs the PAT.)
 
 ## First-time onboarding
 
@@ -82,6 +85,8 @@ apply whenever. Major-bump PRs deserve release-note reading first.
 
 - No PRs? Check the _Renovate_ run under Actions — the log states exactly what Renovate saw
   (e.g. `Dependency extraction complete ... depCount`).
+- `Write access to repository not granted` at push time? Token needs `Contents: read and
+write` (fine-grained) or `repo` (classic), and must be allowed on this repository.
 - Token expired/wrong? `gh secret set RENOVATE_TOKEN` again, then re-run via
   `workflow_dispatch`.
 - Want to validate the config locally before pushing:
