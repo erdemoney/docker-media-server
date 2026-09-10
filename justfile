@@ -7,16 +7,127 @@ stack_list := "traefik cloudflared media-server"
 default:
     just --list
 
-# Copy .env.example → .env for every stack (skips files that already exist)
+# Copy .env.example → .env for every stack and fill the interactive secrets:
+# generates CROWDSEC_BOUNCER_API_KEY, prompts for the Traefik dashboard
+# credentials, and walks you through the Cloudflare API + tunnel tokens.
 init:
-    @for s in {{ stack_list }}; do \
-        if [ ! -f "stacks/$$s/.env" ]; then \
-            cp "stacks/$$s/.env.example" "stacks/$$s/.env" \
-            && echo "created stacks/$$s/.env" \
-        ; else \
-            echo "stacks/$$s/.env already exists, skipping" \
-        ; fi \
-    ; done
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    for s in {{ stack_list }}; do
+        if [ -f "stacks/$s/.env" ]; then
+            echo "stacks/$s/.env   already exists (skipping create)"
+        else
+            cp "stacks/$s/.env.example" "stacks/$s/.env"
+            echo "stacks/$s/.env   created from example"
+        fi
+    done
+    echo
+
+    get_var() {   # prints the current value of KEY in FILE ('' if unset)
+        sed -n "s|^$2=\(.*\)|\1|p" "$1" | tail -n1
+    }
+
+    set_var() {   # sets KEY to VALUE in FILE, preserving the rest of the file
+        local esc
+        esc=$(printf '%s' "$3" | sed -e 's/[&|\\]/\\&/g')
+        sed -i "s|^$2=.*|$2=$esc|" "$1"
+    }
+
+    open_url() {  # best-effort: open the URL in the default browser
+        local url="$1"
+        if command -v xdg-open >/dev/null 2>&1; then
+            xdg-open "$url" >/dev/null 2>&1 &
+            disown || true
+        elif command -v open >/dev/null 2>&1; then
+            open "$url" >/dev/null 2>&1 &
+            disown || true
+        else
+            echo "    -> open $url in your browser"
+        fi
+    }
+
+    TRAEFIK_ENV=stacks/traefik/.env
+
+    echo "== CROWDSEC_BOUNCER_API_KEY =="
+    if [ -n "$(get_var "$TRAEFIK_ENV" CROWDSEC_BOUNCER_API_KEY)" ]; then
+        echo "  already set (stacks/traefik/.env)"
+    else
+        set_var "$TRAEFIK_ENV" CROWDSEC_BOUNCER_API_KEY "$(openssl rand -hex 32)"
+        echo "  generated a random 32-byte key"
+    fi
+    echo
+
+    echo "== TRAEFIK_DASHBOARD_CREDENTIALS =="
+    if [ -n "$(get_var "$TRAEFIK_ENV" TRAEFIK_DASHBOARD_CREDENTIALS)" ]; then
+        echo "  already set (stacks/traefik/.env)"
+    else
+        echo "  htpasswd-style user:hash for the Traefik dashboard."
+        printf '  dashboard username (default admin): '
+        read -r dash_user || dash_user=""
+        printf '  dashboard password (hidden): '
+        read -rs dash_pass || dash_pass=""
+        printf '\n'
+        [ -n "$dash_user" ] || dash_user="admin"
+        hash=$(openssl passwd -apr1 "$dash_pass" 2>/dev/null) || hash=""
+        case "$hash" in
+            \$apr1\$*) : ;;
+            *) hash=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$dash_user" "$dash_pass" | cut -d: -f2) ;;
+        esac
+        set_var "$TRAEFIK_ENV" TRAEFIK_DASHBOARD_CREDENTIALS "'$dash_user:$hash'"
+        echo "  set (single-quoted so compose doesn't eat the hash)"
+    fi
+    echo
+
+    echo "== CF_DNS_API_TOKEN =="
+    if [ -n "$(get_var "$TRAEFIK_ENV" CF_DNS_API_TOKEN)" ]; then
+        echo "  already set (stacks/traefik/.env)"
+    else
+        printf '%s\n' \
+    '  Needs a Cloudflare API token for DNS-01 wildcard certs. Do this in the' \
+    '  browser that just opened:' \
+    '    1. Create a token using the "Edit zone DNS" template for your domain.' \
+    '    2. Paste it below (entry is hidden). Leave empty to set it later.'
+        open_url "https://dash.cloudflare.com/profile/api-tokens"
+        printf '  CF_DNS_API_TOKEN (hidden): '
+        read -rs token || token=""
+        printf '\n'
+        if [ -n "$token" ]; then
+            set_var "$TRAEFIK_ENV" CF_DNS_API_TOKEN "$token"
+            echo "  set"
+        else
+            echo "  skipped"
+        fi
+    fi
+    echo
+
+    CLOUDFLARED_ENV=stacks/cloudflared/.env
+
+    echo "== CLOUDFLARE_TUNNEL_TOKEN =="
+    if [ -n "$(get_var "$CLOUDFLARED_ENV" CLOUDFLARE_TUNNEL_TOKEN)" ]; then
+        echo "  already set (stacks/cloudflared/.env)"
+    else
+        printf '%s\n' \
+    '  Needs a Cloudflare Tunnel token for WAN ingress. Do this in the browser' \
+    '  that just opened:' \
+    '    1. Zero Trust -> Networks -> Tunnels -> create a tunnel (Type: Cloudflared).' \
+    '    2. Copy its token and paste it below (entry is hidden). Leave empty to' \
+    '       set it later.'
+        open_url "https://one.dash.cloudflare.com"
+        printf '  CLOUDFLARE_TUNNEL_TOKEN (hidden): '
+        read -rs token || token=""
+        printf '\n'
+        if [ -n "$token" ]; then
+            set_var "$CLOUDFLARED_ENV" CLOUDFLARE_TUNNEL_TOKEN "$token"
+            echo "  set"
+        else
+            echo "  skipped"
+        fi
+    fi
+    echo
+
+    echo "done. Still edit by hand (DOMAIN, SUB_DOMAIN_*, CONFIG_DIR) in"
+    echo "stacks/*/.env, then run 'just up'."
 
 # Create the shared Docker networks (idempotent)
 networks:

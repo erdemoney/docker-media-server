@@ -9,6 +9,7 @@ nav_order: 11
 
 | Command                         | What it does                                                                      |
 | ------------------------------- | --------------------------------------------------------------------------------- |
+| `just init`                     | create `.env` files and fill the interactive secrets (idempotent)                 |
 | `just up`                       | create networks + config dirs, then bring up every stack                          |
 | `just down`                     | tear every stack down                                                             |
 | `just update-all`               | pull fresh images + recreate changed containers                                   |

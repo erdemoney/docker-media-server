@@ -42,7 +42,7 @@ Seerr handles user requests.
 git clone git@github.com:<you>/docker-media-server.git
 cd docker-media-server
 just init
-# fill in .env files (see docs/quickstart.md for where every secret comes from)
+# answers a few prompts for the secrets; remaining vars go in stacks/*/.env (see docs/quickstart.md)
 just up
 ```
 
