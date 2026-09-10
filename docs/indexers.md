@@ -23,14 +23,18 @@ Torrentio is a movie/TV **torrent aggregator** (ezTV, rarbg, 1337x, TPB, nyaa, .
 supports it as a custom Cardigann indexer, so results flow through the normal Prowlarr → Sonarr/
 Radarr sync and grabs go to Decypharr for debrid streaming.
 
-1. Drop the definition into Prowlarr's config and restart:
+1. Bootstrap the definition from the Prowlarr-Indexers repo with one command (run on the
+   server; it clones the repo, installs `Custom/torrentio.yml` into prowlarr's config dir, and
+   restarts prowlarr):
 
    ```bash
-   mkdir -p "$SERVICES_DIR/prowlarr/Definitions/Custom"
-   # fetch https://raw.githubusercontent.com/dreulavelle/Prowlarr-Indexers/main/Custom/torrentio.yml
-   #   and save it there as torrentio.yml
-   just restart media-server        # or recreate just the prowlarr service
+   just bootstrap-torrentio
+   # not the default SERVICES_DIR? pass it positionally: just bootstrap-torrentio /custom/path
    ```
+
+   (For reference, the manual step it automates: place `torrentio.yml` from
+   `https://github.com/dreulavelle/Prowlarr-Indexers` into
+   `$SERVICES_DIR/prowlarr/Definitions/Custom` and recreate prowlarr.)
 
 2. Prowlarr → **Indexers** → `+` → search **Torrentio** → add it.
    - Paste your **Real-Debrid (or supported-debrid) API key** in the indexer key field — the

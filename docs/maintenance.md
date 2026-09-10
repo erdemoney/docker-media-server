@@ -7,23 +7,27 @@ nav_order: 11
 
 ## Ops recipes (`justfile`)
 
-| Command                         | What it does                                                         |
-| ------------------------------- | -------------------------------------------------------------------- |
-| `just up`                       | create networks (idempotent) + bring up every stack                  |
-| `just down`                     | tear every stack down                                                |
-| `just update-all`               | pull fresh images + recreate changed containers                      |
-| `just update <stack>`           | pull + recreate one stack, e.g. `just update traefik`                |
-| `just up-svc <stack> <svc>`     | recreate one service, e.g. `just up-svc media-server jellyfin`       |
-| `just update-svc <stack> <svc>` | pull + recreate one service                                          |
-| `just check-updates`            | compare pinned tags against registries; exits 1 if anything is newer |
-| `just images` / `just df`       | local images / disk usage                                            |
-| `just ps`                       | list running containers                                              |
-| `just logs <stack>`             | tail logs for a stack                                                |
-| `just restart <stack>`          | restart a stack                                                      |
-| `just validate`                 | `docker compose config -q` on every stack                            |
-| `just dirs`                     | pre-create + chown service config dirs (first install)               |
-| `just networks`                 | create the shared `internal`/`external` networks                     |
-| `just fmt`                      | run all pre-commit format/lint hooks                                 |
+| Command                         | What it does                                                                      |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| `just up`                       | create networks + config dirs, then bring up every stack                          |
+| `just down`                     | tear every stack down                                                             |
+| `just update-all`               | pull fresh images + recreate changed containers                                   |
+| `just update <stack>`           | pull + recreate one stack, e.g. `just update traefik`                             |
+| `just up-svc <stack> <svc>`     | recreate one service, e.g. `just up-svc media-server jellyfin`                    |
+| `just update-svc <stack> <svc>` | pull + recreate one service                                                       |
+| `just check-updates`            | compare pinned tags against registries; exits 1 if anything is newer              |
+| `just images` / `just df`       | local images / disk usage                                                         |
+| `just ps`                       | list running containers                                                           |
+| `just logs <stack>`             | tail logs for a stack                                                             |
+| `just restart <stack>`          | restart a stack                                                                   |
+| `just validate`                 | `docker compose config -q` on every stack                                         |
+| `just dirs`                     | pre-create + chown service config dirs (idempotent; called by `just up`)          |
+| `just bootstrap-torrentio`      | install the Torrentio indexer definition into prowlarr (see [Indexers](indexers)) |
+| `just networks`                 | create the shared `internal`/`external` networks                                  |
+
+Formatting and linting are handled by **pre-commit** directly (`pre-commit install` once, then
+hooks run automatically on every commit — same scope as CI: syntax + secret scanning). Gitleaks
+is auto-downloaded by pre-commit on first run (no manual install needed).
 
 The update flow the repo is built around: Renovate opens a PR → merge → `git pull` +
 `just update-all` (see [Updates](updates)); `just check-updates` gives the same picture from the

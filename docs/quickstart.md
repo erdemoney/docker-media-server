@@ -9,8 +9,9 @@ Bring the stack up on a fresh Docker host, from a git checkout of this repo (clo
 whatever directory will run the stack — e.g. `~/docker/media-server`). Edit on a dev box, commit,
 and `git pull` on the server.
 
-`just` and Docker are prerequisites. On first boot the shared networks must exist first —
-`just up` creates them for you (idempotent), see [Docker networking](arrs) for why.
+`just` and Docker are prerequisites. `just up` handles the ordering for you — it creates the
+shared networks and the per-service config dirs (both idempotent), then brings every stack up.
+Why the networks and dirs matter is covered in [Docker networking](arrs).
 
 ## 1. Copy and fill the env files
 
@@ -97,9 +98,7 @@ token. How the tunnel's public hostnames route to Traefik is covered in [Ingress
 ## 3. First boot
 
 ```bash
-just dirs        # pre-create + chown the per-service config dirs
-just networks    # create `internal` + `external` (idempotent; safe to skip if >just up)
-just up          # brings every stack up in order
+just up          # creates networks + config dirs, then brings every stack up in order
 just ps          # confirm everything is running
 ```
 

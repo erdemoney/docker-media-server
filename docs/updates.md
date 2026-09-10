@@ -1,9 +1,30 @@
 ---
-title: Updates
+title: Updates & CI
 nav_order: 10
 ---
 
-# Updates: Renovate pipeline
+# Updates & CI
+
+This page covers the automation that runs against the repo on GitHub: a **CI gate** that rejects
+bad pushes/PRs, and a **Renovate pipeline** that opens version-bump PRs. The two are the server-
+side mirror of the local pre-commit workflow.
+
+## CI checks
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request:
+
+| Job        | Check                                         | Fails on                                         |
+| ---------- | --------------------------------------------- | ------------------------------------------------ |
+| `lint`     | `check-yaml` (pre-commit)                     | malformed YAML (unsafe tags allowed)             |
+| `lint`     | `check-json` (pre-commit)                     | malformed JSON                                   |
+| `lint`     | `docker compose config -q` per stack          | a compose file that doesn't parse                |
+| `gitleaks` | `gitleaks/gitleaks-action` (`fetch-depth: 0`) | a secret / API key committed anywhere in history |
+
+The checks reuse the exact hooks from `.pre-commit-config.yaml`, so what's enforced locally is
+also enforced on GitHub. Secrets can't sneak past a push: a leaked key fails CI even if it's been
+removed in a later commit.
+
+## Renovate pipeline
 
 [Renovate](https://ghcr.io/renovatebot/renovate) runs self-hosted in a GitHub Actions workflow
 and opens pull requests that bump the pinned image tags in `stacks/*/compose.yaml`. Review and

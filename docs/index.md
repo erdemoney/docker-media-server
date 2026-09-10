@@ -12,22 +12,25 @@ prerequisites are Docker, `just`, and a directory for the repo. Platform-specifi
 concrete deployment live in `truenas.md` at the repo root; everything here stays host-agnostic.
 
 ```text
-Internet
-   │
-   ▼
-Cloudflare edge ── cloudflared (tunnel) ──> Traefik ─────┐
-   (CDN bypass for media, WAF geolock,        │          │
-    public hostnames)                          │          ▼
-                                          CrowdSec (WAF/IP blocking)
-                                                     │
-   Docker network `external`                        ▼
-   ┌───────────────────────────┐   Traefik routes by Host()   ┌────────────────────────────┐
-   │  HTTP edge (443)          │────────────────────────────▶ │  Docker network `internal` │
-   └───────────────────────────┘                              │   jellyfin  seerr          │
-                                                              │   radarr    sonarr         │
-   LAN / Tailnet ────────────► Traefik :443 (direct)          │   prowlarr  bazarr         │
-                                                              │   profilarr decypharr      │
-                                                              └────────────────────────────┘
+                        Internet
+                           |
+                           v
+               Cloudflare edge (CDN bypass for media, WAF geolock)
+                           |
+                     cloudflared (tunnel)
+                           |
+                        Traefik ----> CrowdSec (WAF / IP blocking)
+                           |
+               ------------+------------
+               |                         |
+               v                         v
+        LAN / Tailnet              Docker "internal" network
+        (direct to Traefik)        +------------------------+
+                                   | jellyfin    seerr      |
+                                   | radarr      sonarr     |
+                                   | prowlarr    bazarr     |
+                                   | profilarr   decypharr  |
+                                   +------------------------+
 ```
 
 Media flow: Prowlarr finds releases (incl. the Torrentio debrid indexer) → Sonarr/Radarr grab
@@ -45,7 +48,7 @@ stacks/                  compose files (one folder per stack) + .env per stack
   homarr/                dashboard
 data/                    runtime config that lives in code
   traefik/               traefik.yml, dynamic.yml, crowdsec-acquis.yaml
-.github/                 Renovate pipeline (workflow + global config)
+.github/                 CI checks (workflow) + Renovate pipeline (workflow + global config)
 scripts/                 helper scripts
 docs/                    this wiki (GitHub Pages)
 justfile                 ops recipes (just up, just update-all, ...)
@@ -62,7 +65,7 @@ justfile                 ops recipes (just up, just update-all, ...)
 | [Ingress](ingress)         | Traefik + Cloudflare tunnel: public hostnames, cache bypass, geolock |
 | [Security](security)       | CrowdSec WAF and IP blocking                                         |
 | [Services](services)       | recommended debrid/Usenet subscriptions                              |
-| [Updates](updates)         | Renovate PR pipeline end to end                                      |
+| [Updates](updates)         | Renovate PR pipeline + CI checks end to end                          |
 | [Maintenance](maintenance) | day-to-day ops, backups, post-deploy checks                          |
 
 All absolute host paths in this wiki are written as the compose env vars they map to —

@@ -60,9 +60,9 @@ Must be a **copy/move that creates new files at the destination**, not a filesys
 ## Repo location
 
 The repo lives at `/mnt/storage/docker/stacks` (dataset `storage/docker`), so compose files are
-snapshotted with the configs. `just dirs` pre-creates each service's dir under
-`/mnt/storage/docker/data` (`$SERVICES_DIR`) with the right ownership, and `just up` brings
-everything up.
+snapshotted with the configs. `just up` pre-creates each service's dir under
+`/mnt/storage/docker/data` (`$SERVICES_DIR`) with the right ownership (via its `dirs`
+dependency) and then brings everything up.
 
 ## Shared Docker networks
 

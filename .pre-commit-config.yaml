@@ -1,40 +1,16 @@
 repos:
-  # General file hygiene
+  # Syntax / hygiene checks (no formatting — formatting lives in CI only)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
       - id: check-yaml
         args: ["--unsafe"]
+      - id: check-json
       - id: check-added-large-files
 
-  # YAML / Markdown / JSON formatting via Prettier (v3 line; v4 alpha broke the plugins)
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.1.0
-    hooks:
-      - id: prettier
-        types_or: [yaml, markdown, json]
-
-  # Shell script formatting
-  - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.13.1-1
-    hooks:
-      - id: shfmt
-
-  # Scan staged changes for hardcoded secrets / API keys (install: brew install gitleaks)
+  # Scan staged changes for hardcoded secrets / API keys (auto-downloads via Go)
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
-      - id: gitleaks-system
-        pass_filenames: false
-
-  # justfile canonical formatting (requires `just` on PATH)
-  - repo: local
-    hooks:
-      - id: just-fmt
-        name: Format justfile
-        entry: just --fmt
-        language: system
-        files: ^justfile$
+      - id: gitleaks
         pass_filenames: false

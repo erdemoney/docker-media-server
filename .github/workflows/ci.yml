@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Syntax + formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Pre-commit hooks (check-yaml, check-json, check-added-large-files, gitleaks)
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files
+
+      - name: Compose files are valid
+        run: |
+          set -euo pipefail
+          for stack in traefik cloudflared media-server homarr; do
+            echo "::group::docker compose config stacks/$stack"
+            docker compose \
+              -f "stacks/$stack/compose.yaml" \
+              --env-file "stacks/$stack/.env.example" \
+              config -q
+            echo "::endgroup::"
+          done
+
+  gitleaks-history:
+    name: Secrets (git history)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

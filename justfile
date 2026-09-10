@@ -19,11 +19,6 @@ validate:
         && docker compose -f "stacks/$$s/compose.yaml" config -q || exit 1 \
     ; done
 
-# Run all pre-commit format/lint hooks (prettier, shfmt, gitleaks, hygiene).
-# One-time setup: pipx install pre-commit && pre-commit install && brew install gitleaks
-fmt:
-    pre-commit run --all-files
-
 # Pull fresh images for every stack
 pull:
     @for s in {{ stack_list }}; do \
@@ -180,8 +175,9 @@ images:
 df:
     docker system df
 
-# Bring the whole stack up (ensures networks exist first)
-up: networks
+# Bring the whole stack up (ensures networks + config dirs exist first)
+# Custom SERVICES_DIR? run `just dirs <path> [PUID PGID]` once first, then `just up`.
+up: networks dirs
     @for s in {{ stack_list }}; do \
         echo "-- $$s" \
         && docker compose -f "stacks/$$s/compose.yaml" up -d \
@@ -210,8 +206,23 @@ config stack:
 ps:
     docker ps
 
-# Pre-create + chown service config dirs (run once after first clone)
-# SERVICES_DIR defaults to /mnt/storage/docker/data; override with `just dirs SERVICES_DIR=/custom/path`
+# Bootstrap the Torrentio indexer definition into prowlarr's config dir from the
+# Prowlarr-Indexers repo (see docs/indexers.md).
+# Idempotent; re-run to re-install. Requires git + network; run on the server.
+# Not the default SERVICES_DIR? pass it positionally: just bootstrap-torrentio /custom/path
+bootstrap-torrentio SERVICES_DIR="/mnt/storage/docker/data":
+    @TMP="$$(mktemp -d)" \
+    && git clone --depth 1 --filter=blob:none https://github.com/dreulavelle/Prowlarr-Indexers "$$TMP" >/dev/null 2>&1 \
+    && mkdir -p "{{ SERVICES_DIR }}/prowlarr/Definitions/Custom" \
+    && cp "$$TMP/Custom/torrentio.yml" "{{ SERVICES_DIR }}/prowlarr/Definitions/Custom/torrentio.yml" \
+    && rm -rf "$$TMP" \
+    && echo "installed {{ SERVICES_DIR }}/prowlarr/Definitions/Custom/torrentio.yml"
+    @docker compose -f stacks/media-server/compose.yaml restart prowlarr 2>/dev/null \
+        || echo "note: prowlarr is not running, the definition will load on next just up"
+
+# Pre-create + chown service config dirs (idempotent; also called by `just up`)
+# SERVICES_DIR defaults to /mnt/storage/docker/data; override positionally: just dirs /custom/path
+# No-op if the dirs already exist and ownership is already PUID:PGID.
 dirs SERVICES_DIR="/mnt/storage/docker/data" PUID="1000" PGID="1000":
     mkdir -p "{{ SERVICES_DIR }}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,sabnzbd/config,crowdsec/config,crowdsec/data}
     chown -R "{{ PUID }}":"{{ PGID }}" "{{ SERVICES_DIR }}"
