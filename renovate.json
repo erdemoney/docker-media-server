@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["docker-compose"],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Media stack dependency dashboard",
+  "timezone": "UTC",
+  "schedule": ["* 6 * * *"],
+  "labels": ["renovate"],
+  "separateMajorMinor": true,
+  "separateMinorPatch": true,
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "media-stack minor/patch",
+      "groupSlug": "media-stack-minor-patch",
+      "labels": ["renovate", "minor/patch"],
+      "automerge": false
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "groupName": "media-stack major",
+      "groupSlug": "media-stack-major",
+      "labels": ["renovate", "major"],
+      "automerge": false
+    }
+  ]
+}
