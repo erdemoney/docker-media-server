@@ -710,6 +710,90 @@ backup-restore SNAPSHOT="latest":
         -v "{{ justfile_directory() }}":/repo \
         {{ restic_image }} restore "{{ SNAPSHOT }}" --target /
 
+# Install a systemd timer that runs 'just backup' on ON_CALENDAR (default daily).
+# Writes restic-backup.{service,timer} under /etc/systemd/system via sudo, then
+# enables the timer. Rerun to change the schedule. systemd is assumed on Linux
+# servers; on a host without it (Alpine, a NAS scheduler, cron) this prints a
+# fallback instead of erroring, and .env.backup is required before it will run.
+[group('Backups')]
+backup-schedule ON_CALENDAR="daily":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v systemctl >/dev/null 2>&1 || {
+        echo "no systemd (systemctl not found) - run the backup via cron instead, e.g.:"
+        echo "  0 4 * * * cd '{{ justfile_directory() }}' && $(command -v just || echo 'just') backup"
+        echo "(or your NAS scheduler; see docs/maintenance.md)"
+        exit 1
+    }
+    command -v sudo >/dev/null 2>&1 || { echo "sudo not found - install sudo or run these commands as root"; exit 1; }
+    command -v just >/dev/null 2>&1 || { echo "'just' not on PATH - install just before scheduling"; exit 1; }
+    [ -f .env.backup ] || { echo "no .env.backup - configure restic first ('just init' or copy .env.backup.example)"; exit 1; }
+
+    JUST_BIN=$(command -v just)
+    REPO="{{ justfile_directory() }}"
+    ON_CALENDAR="{{ ON_CALENDAR }}"
+
+    printf '%s\n' \
+        "This installs a systemd timer that runs '$JUST_BIN backup' in '$REPO'" \
+        "on calendar '$ON_CALENDAR'. Two files are written under /etc/systemd/system" \
+        'with sudo and the timer is enabled + started:'
+    printf '  /etc/systemd/system/restic-backup.timer\n  /etc/systemd/system/restic-backup.service\n'
+    printf 'Proceed? [y/N] '
+    read -r ok || ok=""
+    case "$ok" in
+    y|Y|yes|Yes|YES) : ;;
+    *) echo "aborted"; exit 1 ;;
+    esac
+
+    printf '%s\n' \
+        '[Unit]' \
+        'Description=Restic backup of the media repo' \
+        'After=network-online.target' \
+        'Wants=network-online.target' \
+        '' \
+        '[Service]' \
+        'Type=oneshot' \
+        "WorkingDirectory=$REPO" \
+        "ExecStart=$JUST_BIN backup" \
+        | sudo tee /etc/systemd/system/restic-backup.service >/dev/null
+
+    printf '%s\n' \
+        '[Unit]' \
+        'Description=Run the restic repo backup daily' \
+        '' \
+        '[Timer]' \
+        "OnCalendar=$ON_CALENDAR" \
+        'Persistent=true' \
+        'Unit=restic-backup.service' \
+        '' \
+        '[Install]' \
+        'WantedBy=timers.target' \
+        | sudo tee /etc/systemd/system/restic-backup.timer >/dev/null
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now restic-backup.timer
+    echo
+    echo "installed restic-backup.{service,timer} - timer enabled and active."
+    systemctl list-timers restic-backup.timer --no-pager
+    echo "remove it later with 'just backup-unschedule'."
+
+# Stop and remove the restic backup systemd timer + service installed by
+# backup-schedule (idempotent; sudo)
+[group('Backups')]
+backup-unschedule:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v systemctl >/dev/null 2>&1 || { echo "no systemd - nothing to uninstall"; exit 0; }
+    command -v sudo >/dev/null 2>&1 || { echo "sudo not found - run these commands as root"; exit 1; }
+
+    sudo systemctl disable --now restic-backup.timer >/dev/null 2>&1 || true
+    sudo systemctl reset-failed restic-backup.timer >/dev/null 2>&1 || true
+    sudo rm -f /etc/systemd/system/restic-backup.timer /etc/systemd/system/restic-backup.service
+    sudo systemctl daemon-reload
+    echo "removed restic-backup.{timer,service} and stopped the timer."
+
 # Pre-create + chown service config dirs (idempotent; also called by `just up`)
 # CONFIG_DIR defaults to /mnt/storage/docker/data; override positionally: just dirs /custom/path
 # No-op if the dirs already exist and ownership is already PUID:PGID.

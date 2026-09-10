@@ -87,33 +87,29 @@ Other recipes:
 | `just backup-list`          | list snapshots                                             |
 | `just backup-check`         | verify repository integrity (add `--read-data` for a full audit) |
 | `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.backup` |
-| `just backup-restore [<id>]`| dry-run preview, then restore into the repo working tree (default: latest)
+| `just backup-restore [<id>]`| dry-run preview, then restore into the repo working tree (default: latest) |
+| `just backup-schedule [<cal>]`| install a systemd timer running `just backup` (default `daily`; sudo) |
+| `just backup-unschedule`    | stop and remove the installed systemd timer (sudo)         |
 
-A daily systemd timer (place both units in `/etc/systemd/system/`):
+Schedule the routine snapshots with a **systemd timer** — better than cron here: journald captures
+the output, and `Persistent=true` catches up on a backup that was skipped while the host was off:
 
-```ini
-# restic-backup.timer
-[Unit]
-Description=Nightly restic backup of the media repo
-
-[Timer]
-OnCalendar=*-*-* 04:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
+```bash
+just backup-schedule              # runs daily
+just backup-schedule "*-*-* 04:30:00"   # custom calendar, re-run to change
 ```
 
-```ini
-# restic-backup.service
-[Unit]
-Description=Nightly restic backup of the media repo
+This writes `restic-backup.{service,timer}` under `/etc/systemd/system` via sudo (with a
+confirmation prompt), resolves your actual `just` path into `ExecStart`, and enables the timer.
+On a host **without** systemd (Alpine, OpenWrt, a NAS scheduler), it prints the equivalent cron
+line instead of erroring — or use cron directly:
 
-[Service]
-Type=oneshot
-WorkingDirectory=/srv/docker-media-server
-ExecStart=/usr/local/bin/just backup
 ```
+0 4 * * * cd /srv/docker-media-server && /usr/local/bin/just backup
+```
+
+`systemctl list-timers restic-backup.timer` shows the next run; `just backup-unschedule` removes
+the units.
 
 `just backup-restore` is **non-destructive**: it dry-runs first, prints exactly what would be
 restored/updated, and asks for confirmation before writing anything. Files present locally but
