@@ -1,0 +1,118 @@
+---
+title: Quickstart
+nav_order: 2
+---
+
+# Quickstart
+
+Bring the stack up on a fresh Docker host, from a git checkout of this repo (clone it into
+whatever directory will run the stack — e.g. `~/docker/media-server`). Edit on a dev box, commit,
+and `git pull` on the server.
+
+`just` and Docker are prerequisites. On first boot the shared networks must exist first —
+`just up` creates them for you (idempotent), see [Docker networking](arrs) for why.
+
+## 1. Copy and fill the env files
+
+Every stack needs its `.env` populated from the example:
+
+```bash
+for s in traefik cloudflared media-server homarr; do
+  cp stacks/$s/.env.example stacks/$s/.env
+done
+```
+
+Set each variable (see `stacks/*/.env.example`):
+
+| Variable                        | Where it lives | What it's for                                                    |
+| ------------------------------- | -------------- | ---------------------------------------------------------------- |
+| `DOMAIN`                        | all stacks     | apex domain; every `SUB_DOMAIN_*` entry extends it               |
+| `SUB_DOMAIN_*`                  | per stack      | public subdomain per app, e.g. `jellyfin.<DOMAIN>`               |
+| `SERVICES_DIR`                  | all stacks     | directory for app configs on disk, e.g. `/srv/media-server/data` |
+| `DATA_DIR`                      | media-server   | the media library root, e.g. `/srv/media`                        |
+| `ENV_PUID` / `ENV_PGID`         | stacks         | user/group owning the datasets                                   |
+| `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
+| `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
+| `CROWDSEC_BOUNCER_API_KEY`      | traefik        | CrowdSec ↔ Traefik shared key (see below)                       |
+| `CLOUDFLARE_TUNNEL_TOKEN`       | cloudflared    | remotely-managed tunnel token                                    |
+| `SECRET_ENCRYPTION_KEY`         | homarr         | dashboard encryption key                                         |
+
+## 2. Where the secrets come from
+
+### `CF_DNS_API_TOKEN` — Cloudflare (wildcard TLS)
+
+1. dash.cloudflare.com → **My Profile** → **API Tokens** → **Create Token**.
+2. Use the **Edit zone DNS** template (or custom: Zone → DNS → **Edit** on `DOMAIN`).
+3. Traefik uses it to create `_acme-challenge` TXT records for `*.DOMAIN` — nothing else.
+
+Verify before first `up`:
+
+```bash
+curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+  -H "Authorization: Bearer <token>"   # expect "status": "active"
+```
+
+### `TRAEFIK_DASHBOARD_CREDENTIALS` — htpasswd blob for `traefik.<DOMAIN>`
+
+Not a token — a `user:hash` pair produced by `htpasswd`:
+
+```bash
+docker run --rm httpd:2.4-alpine htpasswd -nbB user 'ChangeMe-strong-password'
+```
+
+(No docker? `htpasswd -nbB` from `apache2-utils`, or `openssl passwd -apr1 'pass'` — Traefik
+accepts both.)
+
+`.env` gotcha: the `$2y$...` hash breaks compose interpolation, so **quote the whole value in
+single quotes**:
+
+```
+TRAEFIK_DASHBOARD_CREDENTIALS='user:$2y$05$abcdefghijklmnopqrstuvwxyz0123456789'
+```
+
+Regenerate and recreate the traefik container if you ever lose it.
+
+### `CROWDSEC_BOUNCER_API_KEY` — local random key
+
+No dashboard to sign up for. Any random string works; both CrowdSec and Traefik use it to
+authenticate over LAPI:
+
+```bash
+openssl rand -hex 32     # 64 hex chars
+```
+
+Paste into `stacks/traefik/.env`. It must be set **before** `just up`; after changing it,
+recreate the `crowdsec` and `traefik` containers (`just update-all`). Details in
+[Security](security).
+
+### `CLOUDFLARE_TUNNEL_TOKEN` — Zero Trust tunnel
+
+dash.cloudflare.com → **Zero Trust** → **Networks → Tunnels** → create a tunnel and copy its
+token. How the tunnel's public hostnames route to Traefik is covered in [Ingress](ingress).
+
+### `SECRET_ENCRYPTION_KEY` — anything random
+
+`openssl rand -base64 32` into `stacks/homarr/.env`.
+
+## 3. First boot
+
+```bash
+just dirs        # pre-create + chown the per-service config dirs
+just networks    # create `internal` + `external` (idempotent; safe to skip if >just up)
+just up          # brings every stack up in order
+just ps          # confirm everything is running
+```
+
+App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `sonarr`,
+`prowlarr`, `profilarr`, `bazarr`, `decypharr`, `homarr`, `traefik`.
+
+## 4. What to check right after boot
+
+- Traefik downloaded the CrowdSec plugin on first start (needs outbound internet); a
+  `Certificate` appears in the ACME panel for `*.DOMAIN`.
+- CrowdSec seeded its config under `$SERVICES_DIR/crowdsec/config` — see [Security](security).
+- Jellyfin's admin account is created on first login (feed its key to Seerr later).
+- `docker exec jellyfin nvidia-smi` if you expect GPU transcoding (see
+  [Maintenance](maintenance)).
+
+Then continue to [The \*arrs](arrs) for app-to-app wiring.
