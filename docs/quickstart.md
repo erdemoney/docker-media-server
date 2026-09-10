@@ -30,10 +30,10 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 Every stack needs its `.env` populated from the example:
 
 ```bash
-for s in traefik cloudflared media-server homarr; do
-  cp stacks/$s/.env.example stacks/$s/.env
-done
+just env
 ```
+
+This copies each `.env.example` → `.env`, skipping any that already exist (safe to re-run).
 
 Set each variable (see `stacks/*/.env.example`):
 

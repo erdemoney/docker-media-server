@@ -7,6 +7,17 @@ stack_list := "traefik cloudflared media-server homarr"
 default:
     just --list
 
+# Copy .env.example → .env for every stack (skips files that already exist)
+env:
+    @for s in {{ stack_list }}; do \
+        if [ ! -f "stacks/$$s/.env" ]; then \
+            cp "stacks/$$s/.env.example" "stacks/$$s/.env" \
+            && echo "created stacks/$$s/.env" \
+        ; else \
+            echo "stacks/$$s/.env already exists, skipping" \
+        ; fi \
+    ; done
+
 # Create the shared Docker networks (idempotent)
 networks:
     docker network inspect internal >/dev/null 2>&1 || docker network create internal

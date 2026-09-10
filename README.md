@@ -41,7 +41,7 @@ Seerr handles user requests.
 ```bash
 git clone git@github.com:<you>/docker-media-server.git
 cd docker-media-server
-for s in traefik cloudflared media-server homarr; do cp stacks/$s/.env.example stacks/$s/.env; done
+just env
 # fill in .env files (see docs/quickstart.md for where every secret comes from)
 just up
 ```
