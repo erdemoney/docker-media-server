@@ -158,8 +158,8 @@ These are the outstanding items from first bring-up — do them once, then forge
 
 - **Jellyfin libraries** — Decypharr's FUSE mount is already bound into `jellyfin`, `sonarr`,
   `radarr`, and `bazarr` (`- /mnt/decypharr:/mnt/decypharr:rslave`), so all that's left is adding
-  the libraries in the Jellyfin UI pointing at subpaths of it (see [The \*arrs](arrs)). Check
-  `/mnt` is a shared mount on the host or nothing will propagate (see [Decypharr](decypharr)).
+  the libraries in the Jellyfin UI pointing at subpaths of it (see [The \*arrs](arrs)). If those
+  paths look empty inside the containers, check mount propagation (see [Decypharr](decypharr)).
 - **Root folders** in Radarr/Sonarr must point at paths the containers can actually reach.
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
   working `CF_DNS_API_TOKEN`).

@@ -26,21 +26,19 @@ Config is written to `$CONFIG_DIR/decypharr/configs/config.json`.
 
 ## Visibility of the mount
 
-FUSE mounts made inside the container propagate to the host at `/mnt/decypharr` (the `:rshared`
-bind). The consumers are already wired in the stack — `jellyfin`, `sonarr`, `radarr`, and
-`bazarr` each bind that path back in:
+Decypharr creates its FUSE mount *inside* its own container: `:rshared` pushes it out to the host
+at `/mnt/decypharr`, and `jellyfin`/`sonarr`/`radarr`/`bazarr` bind that path back in with
+`:rslave` to receive it. Both halves ship in the compose — nothing to add. The flags are
+asymmetric on purpose (producer shares, consumers receive); a plain bind would snapshot the mount
+table at container start and show an empty directory forever.
 
-```yaml
-- /mnt/decypharr:/mnt/decypharr:rslave
+The one host-side prerequisite: `/mnt` must itself be a shared mount. systemd makes `/` rshared at
+boot, so this is normally already true — only worth checking if the consumers come up empty:
+
+```bash
+findmnt -o TARGET,PROPAGATION /mnt   # want "shared"
+sudo mount --make-rshared /mnt       # if it isn't
 ```
-
-The propagation flags matter and are not symmetric: Decypharr is the **producer**, so it needs
-`:rshared` to push mounts it creates out to the host; the others are **consumers**, so they need
-`:rslave` to receive them. A plain bind would snapshot the host's mount table at container start
-and show an empty directory — Decypharr creates the FUSE mount *after* startup, and re-creates it
-on every restart. This also means the host's `/mnt` must itself be a shared mount
-(`findmnt -o TARGET,PROPAGATION /mnt`; make it so with `sudo mount --make-rshared /mnt`), which
-Decypharr's `:rshared` bind requires anyway.
 
 ## Integration with Sonarr/Radarr
 
@@ -55,9 +53,10 @@ Decypharr's `:rshared` bind requires anyway.
      other.
 2. **Outbound** — Decypharr → Settings → **Arrs**: it auto-detects apps that hit it; give each
    arr's host (`http://sonarr:8989`, not the public URL) and API key.
-3. **Path mapping** — if the arr's import path differs from Decypharr's mount path, set one on
-   the download client: Remote path `/mnt/decypharr` → Local path (what the arr sees), e.g.
-   `/media/tv`.
+3. **Path mapping** — not needed in this stack: Decypharr's mount path and the arrs' bind are the
+   same absolute path (`/mnt/decypharr`), so the path it reports is the path they can open. Add a
+   remote path mapping only if you deviate — a different mount path in Decypharr's config, a
+   different container path in the bind, or Decypharr running on another host.
 4. **Repair worker / queue cleanup** — enable in Settings → Arrs (the blacklist + research
    defaults are sensible) so failed grabs don't clog the queue.
 
