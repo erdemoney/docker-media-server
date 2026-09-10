@@ -11,6 +11,15 @@ checkout runs on any Docker host (a dedicated box, a VM, a NAS appliance, ...) �
 prerequisites are Docker, `just`, and a directory for the repo. Platform-specific notes for one
 concrete deployment live in `truenas.md` at the repo root; everything here stays host-agnostic.
 
+## Hardware
+
+A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150
+new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
+transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM, a small NVMe for the OS and
+config, and whatever storage you mount for the media library (external USB, NFS, ZFS pool, ...).
+The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat; anything more
+concurrent (multiple remote streams) is where a GPU like the P400 earns its keep.
+
 ```text
                         Internet
                            |
@@ -49,7 +58,6 @@ stacks/                  compose files (one folder per stack) + .env per stack
 data/                    runtime config that lives in code
   traefik/               traefik.yml, dynamic.yml, crowdsec-acquis.yaml
 .github/                 CI checks (workflow) + Renovate pipeline (workflow + global config)
-scripts/                 helper scripts
 docs/                    this wiki (GitHub Pages)
 justfile                 ops recipes (just up, just update-all, ...)
 ```
