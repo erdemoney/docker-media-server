@@ -36,9 +36,10 @@ Run `just init` — it creates each stack's `.env` and walks you through **every
 - Subdomains default to the example values — Enter to keep, type to change;
   `ENV_PUID`/`ENV_PGID` instead propose the uid/gid of the user running `just` (Enter to
   use), so container files match your user — they fall back to `1000` if you run as root
-- `ACME_EMAIL` is your Let's Encrypt contact address — `just dirs` renders it into
-  `traefik.yml`; leave it empty and no certificates will be issued. There is **no Let's Encrypt
-  account to register**: Traefik creates one over ACME on first start (see [Ingress](ingress))
+- `ACME_EMAIL` defaults to `admin@<DOMAIN>` — Enter accepts it. There is **no Let's Encrypt
+  account to register** (Traefik creates one over ACME on first start) and the address needn't
+  receive mail, but it can't be a fake domain like `example.com` — their API rejects those.
+  See [Ingress](ingress#there-is-no-lets-encrypt-account-to-create)
 - `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
 - Explains each Cloudflare secret, then **confirms before opening the page in your

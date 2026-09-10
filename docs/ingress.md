@@ -50,17 +50,29 @@ verification**. The account is created programmatically over ACME the first time
 it generates a keypair, registers it, accepts the subscriber agreement on your behalf, and stores
 all of it in `$CONFIG_DIR/traefik/acme.json`. You never visit their website.
 
-So `ACME_EMAIL` needs no prior setup anywhere. Two caveats about what it actually does:
+So `ACME_EMAIL` needs no prior setup anywhere, and `just init` defaults it to
+`admin@<your domain>` — press Enter and you're done. Three things worth knowing about it:
 
 - **Traefik requires the field** (it's `Required: Yes` in Traefik's ACME reference), even though
   Let's Encrypt treats the contact address as optional. Leave it blank and the resolver is
   misconfigured — `just dirs` warns you.
-- **It will not get you renewal reminders.** Let's Encrypt
-  [ended expiration notification emails on 4 June 2025](https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended)
-  and deleted the addresses it had stored; addresses sent via ACME are no longer kept against
-  issuance data. Renewal is automatic here anyway, but if you want independent alerting, use a
-  third-party monitor (Let's Encrypt suggests Red Sift Certificates Lite, free up to 250 certs)
-  rather than expecting mail from them.
+- **It does not have to receive mail.** Let's Encrypt
+  [ended expiration notification emails on 4 June 2025](https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended),
+  deleted the addresses it had stored, and no longer keeps ACME-supplied addresses against
+  issuance data. Renewal is automatic here anyway; if you want independent alerting use a
+  third-party monitor (they suggest Red Sift Certificates Lite, free up to 250 certs) rather
+  than expecting mail from them.
+- **But it cannot be a fake domain.** Their API validates the contact domain and rejects
+  reserved ones outright:
+
+  ```
+  400 urn:ietf:params:acme:error:invalidEmail:
+      invalid contact domain. Contact emails @example.com are forbidden
+  ```
+
+  Bare ICANN TLDs are refused for the same reason. That's why the default is `admin@` your own
+  domain — a domain you demonstrably control, so it always passes, whether or not a mailbox
+  exists behind it.
 
 ### What you *do* have to set up
 

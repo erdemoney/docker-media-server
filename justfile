@@ -113,6 +113,23 @@ init:
         fi
     }
 
+    prompt_default() {   # FILE VAR DEFAULT: like prompt_value but an empty value offers
+        local file="$1" var="$2" def="$3" cur ans   # DEFAULT on Enter instead of staying empty
+        cur=$(get_var "$file" "$var") || true
+        if [ -n "$cur" ]; then
+            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            read -r ans || ans=""
+        else
+            printf '  %s [%s, Enter to use] > ' "$var" "$def"
+            read -r ans || ans=""
+            [ -z "$ans" ] && ans="$def"
+        fi
+        if [ -n "$ans" ] && [ "$ans" != "$cur" ]; then
+            set_var "$file" "$var" "$ans"
+        fi
+        return 0
+    }
+
     abs_path() {   # print $1 as an absolute path, resolving relative against $PWD
         case "$1" in
             /*) p="$1" ;;
@@ -159,11 +176,15 @@ init:
 
     echo "== traefik =="
     prompt_value "$TRAEFIK_ENV" SUB_DOMAIN_TRAEFIK
+    # Let's Encrypt only needs a syntactically valid contact on a real domain - it stopped
+    # sending mail in June 2025 and no longer stores the address, so it does not have to be
+    # deliverable. It cannot be a dummy either: Boulder rejects @example.com outright.
+    # Defaulting to admin@$DOMAIN is always valid (they own the zone) and needs no thought.
     printf '%s\n' \
-        "  ACME_EMAIL is your Let's Encrypt account address (expiry notices go there)." \
-        '  It is rendered into traefik.yml by `just dirs`; leave empty to skip, but no' \
-        '  certificates will be issued until it is set.'
-    prompt_value "$TRAEFIK_ENV" ACME_EMAIL "you@example.com"
+        "  ACME_EMAIL is the Let's Encrypt contact address. It does not have to receive mail" \
+        '  (they stopped sending it in 2025), but it must be a real domain - @example.com is' \
+        '  rejected by their API - so it defaults to admin@ your own domain.'
+    prompt_default "$TRAEFIK_ENV" ACME_EMAIL "admin@$(get_var "$TRAEFIK_ENV" DOMAIN)"
     echo
 
     echo "CROWDSEC_BOUNCER_API_KEY"
