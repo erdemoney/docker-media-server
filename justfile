@@ -1,7 +1,7 @@
 set shell := ["bash", "-uc"]
 set dotenv-load := false
 
-stack_list := "traefik cloudflared media-server homarr"
+stack_list := "traefik cloudflared media-server"
 
 # Show available recipes
 default:
@@ -71,7 +71,6 @@ check-updates:
         "stacks/traefik/compose.yaml",
         "stacks/cloudflared/compose.yaml",
         "stacks/media-server/compose.yaml",
-        "stacks/homarr/compose.yaml",
     )
     VERSION_RE = re.compile(r"^v?[0-9]+(\.[0-9]+){1,4}$")
 
@@ -209,7 +208,7 @@ restart stack:
 logs stack:
     docker compose -f "stacks/{{ stack }}/compose.yaml" logs -f --tail=100
 
-# Show the resolved compose config for one stack, e.g. `just config homarr`
+# Show the resolved compose config for one stack, e.g. `just config media-server`
 config stack:
     docker compose -f "stacks/{{ stack }}/compose.yaml" config
 

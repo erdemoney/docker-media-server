@@ -26,7 +26,7 @@ jobs:
       - name: Compose files are valid
         run: |
           set -euo pipefail
-          for stack in traefik cloudflared media-server homarr; do
+          for stack in traefik cloudflared media-server; do
             echo "::group::docker compose config stacks/$stack"
             docker compose \
               -f "stacks/$stack/compose.yaml" \

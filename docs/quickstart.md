@@ -48,7 +48,6 @@ Set each variable (see `stacks/*/.env.example`):
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
 | `CROWDSEC_BOUNCER_API_KEY`      | traefik        | CrowdSec ↔ Traefik shared key (see below)                       |
 | `CLOUDFLARE_TUNNEL_TOKEN`       | cloudflared    | remotely-managed tunnel token                                    |
-| `SECRET_ENCRYPTION_KEY`         | homarr         | dashboard encryption key                                         |
 
 ## 2. Where the secrets come from
 
@@ -103,10 +102,6 @@ recreate the `crowdsec` and `traefik` containers (`just update-all`). Details in
 dash.cloudflare.com → **Zero Trust** → **Networks → Tunnels** → create a tunnel and copy its
 token. How the tunnel's public hostnames route to Traefik is covered in [Ingress](ingress).
 
-### `SECRET_ENCRYPTION_KEY` — anything random
-
-`openssl rand -base64 32` into `stacks/homarr/.env`.
-
 ## 3. First boot
 
 ```bash
@@ -115,7 +110,7 @@ just ps          # confirm everything is running
 ```
 
 App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `sonarr`,
-`prowlarr`, `profilarr`, `bazarr`, `decypharr`, `homarr`, `traefik`.
+`prowlarr`, `profilarr`, `bazarr`, `decypharr`, `traefik`.
 
 ## 4. What to check right after boot
 

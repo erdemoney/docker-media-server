@@ -61,7 +61,6 @@ stacks/                  compose files (one folder per stack) + .env per stack
   cloudflared/           WAN ingress (remotely-managed tunnel)
   media-server/          jellyfin, seerr, radarr, sonarr, prowlarr,
                          profilarr, bazarr, decypharr
-  homarr/                dashboard
 data/                    runtime config that lives in code
   traefik/               traefik.yml, dynamic.yml, crowdsec-acquis.yaml
 .github/                 CI checks (workflow) + Renovate pipeline (workflow + global config)
@@ -86,6 +85,18 @@ justfile                 ops recipes (just up, just update-all, ...)
 All absolute host paths in this wiki are written as the compose env vars they map to —
 `$SERVICES_DIR` (app configs) and `$DATA_DIR` (the media library) are defined per stack in
 `stacks/*/.env`.
+
+## Additional services
+
+The core stack covers media acquisition, management, and streaming. A few extras pair well if you
+want them — drop a compose file into `stacks/` and they'll join the same `internal` network
+automatically:
+
+- **Homarr** (`ghcr.io/homarr-labs/homarr`) — lightweight dashboard with widgets for each app.
+  Point it at the internal service URLs (`http://sonarr:8989`, ...) and it just works.
+- **qBittorrent** — if you prefer local torrents over debrid, add it as an alternative download
+  client alongside Decypharr.
+- **Overseerr** — alternative to Seerr for media requests (same role, different UI).
 
 ## External references
 

@@ -54,8 +54,6 @@ These are the outstanding items from first bring-up — do them once, then forge
   (e.g. `${DATA_DIR}:/media` or per-subfolder mounts), then point root folders at those paths and
   add the libraries in the Jellyfin UI.
 - **Root folders** in Radarr/Sonarr must match the bind mounts you actually give the containers.
-- **Homarr dashboard** — add widgets backed by the apps at their **internal** URLs
-  (`http://sonarr:8989`, ...); Homarr is on the same network, so service names resolve.
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
   working `CF_DNS_API_TOKEN`).
 - **CrowdSec** — confirm the bouncer authed: `docker exec crowdsec cscli bouncers list`
