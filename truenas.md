@@ -68,8 +68,8 @@ docker compose -f /mnt/storage/docker/stacks/cloudflared/compose.yaml down
 docker compose -f /mnt/storage/docker/stacks/homarr/compose.yaml down
 ```
 
-   If a `data -> data.old` rename from earlier is still pending, finish or abort it now that
-   nothing is using the mount (this step no longer needs `data.old` — see step 4).
+If a `data -> data.old` rename from earlier is still pending, finish or abort it now that
+nothing is using the mount (this step no longer needs `data.old` — see step 4).
 
 2. **Inventory + snapshot** for rollback insurance:
 
@@ -96,7 +96,7 @@ rsync -aH --info=progress2 <old>/tv/         /mnt/storage/media/tv/
 rsync -aH --info=progress2 <old>/downloads/  /mnt/storage/media/downloads/
 ```
 
-   (`-H` preserves existing hardlinks inside each source.)
+(`-H` preserves existing hardlinks inside each source.)
 
 6. **Verify before deleting anything** — compare sizes, then spot-check dirs/files:
 
@@ -111,8 +111,8 @@ chown -R <PUID>:<PGID> /mnt/storage/docker/data /mnt/storage/media
 zfs destroy <old-dataset> ...
 ```
 
-   Use `zfs destroy` — never `rm -rf` on a mounted dataset (leaves an empty dataset behind;
-   destroying a parent removes its children).
+Use `zfs destroy` — never `rm -rf` on a mounted dataset (leaves an empty dataset behind;
+destroying a parent removes its children).
 
 8. **Deploy**: update `stacks/media-server/.env` (`DATA_DIR=/mnt/storage/media`), `docker compose up -d`.
 
@@ -124,7 +124,7 @@ routing). They survive daemon restarts but are wiped if the apps VM is ever rebu
 idempotently from the repo before first deploy:
 
 ```
-cd /mnt/storage/docker/stacks && ./networks.sh
+cd /mnt/storage/docker/stacks && just networks
 ```
 
 - `internal` — app-to-app traffic / routing between services and Traefik.

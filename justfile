@@ -9,18 +9,24 @@ default:
 
 # Create the shared Docker networks (idempotent)
 networks:
-    ./networks.sh
+    docker network inspect internal >/dev/null 2>&1 || docker network create internal
+    docker network inspect external >/dev/null 2>&1 || docker network create external
 
 # Validate every compose file against the docker compose schema
 validate:
-    @for s in {{stack_list}}; do \
+    @for s in {{ stack_list }}; do \
         echo "-- stacks/$$s/compose.yaml" \
         && docker compose -f "stacks/$$s/compose.yaml" config -q || exit 1 \
     ; done
 
+# Run all pre-commit format/lint hooks (prettier, shfmt, gitleaks, hygiene).
+# One-time setup: pipx install pre-commit && pre-commit install && brew install gitleaks
+fmt:
+    pre-commit run --all-files
+
 # Pull fresh images for every stack
 pull:
-    @for s in {{stack_list}}; do \
+    @for s in {{ stack_list }}; do \
         echo "-- $$s" \
         && docker compose -f "stacks/$$s/compose.yaml" pull \
     ; done
@@ -28,24 +34,24 @@ pull:
 # Update all containers to the images referenced in compose (pull + recreate changed ones)
 update-all:
     just pull
-    @for s in {{stack_list}}; do \
+    @for s in {{ stack_list }}; do \
         echo "-- $$s" \
         && docker compose -f "stacks/$$s/compose.yaml" up -d \
     ; done
 
 # Update one stack, e.g. `just update traefik`
 update stack:
-    docker compose -f "stacks/{{stack}}/compose.yaml" pull
-    docker compose -f "stacks/{{stack}}/compose.yaml" up -d
+    docker compose -f "stacks/{{ stack }}/compose.yaml" pull
+    docker compose -f "stacks/{{ stack }}/compose.yaml" up -d
 
 # Recreate one service within a stack (after bumping its tag), e.g. `just up-svc media-server jellyfin`
 up-svc stack service:
-    docker compose -f "stacks/{{stack}}/compose.yaml" up -d "{{service}}"
+    docker compose -f "stacks/{{ stack }}/compose.yaml" up -d "{{ service }}"
 
 # Pull + recreate one service within a stack, e.g. `just update-svc media-server jellyfin`
 update-svc stack service:
-    docker compose -f "stacks/{{stack}}/compose.yaml" pull "{{service}}"
-    docker compose -f "stacks/{{stack}}/compose.yaml" up -d "{{service}}"
+    docker compose -f "stacks/{{ stack }}/compose.yaml" pull "{{ service }}"
+    docker compose -f "stacks/{{ stack }}/compose.yaml" up -d "{{ service }}"
 
 # Compare pinned image tags against what the registries publish (read-only)
 check-updates:
@@ -176,29 +182,29 @@ df:
 
 # Bring the whole stack up (ensures networks exist first)
 up: networks
-    @for s in {{stack_list}}; do \
+    @for s in {{ stack_list }}; do \
         echo "-- $$s" \
         && docker compose -f "stacks/$$s/compose.yaml" up -d \
     ; done
 
 # Tear the whole stack down
 down:
-    @for s in {{stack_list}}; do \
+    @for s in {{ stack_list }}; do \
         echo "-- $$s" \
         && docker compose -f "stacks/$$s/compose.yaml" down \
     ; done
 
 # Restart one stack, e.g. `just restart traefik`
 restart stack:
-    docker compose -f "stacks/{{stack}}/compose.yaml" restart
+    docker compose -f "stacks/{{ stack }}/compose.yaml" restart
 
 # Stream logs for one stack, e.g. `just logs media-server`
 logs stack:
-    docker compose -f "stacks/{{stack}}/compose.yaml" logs -f --tail=100
+    docker compose -f "stacks/{{ stack }}/compose.yaml" logs -f --tail=100
 
 # Show the resolved compose config for one stack, e.g. `just config homarr`
 config stack:
-    docker compose -f "stacks/{{stack}}/compose.yaml" config
+    docker compose -f "stacks/{{ stack }}/compose.yaml" config
 
 # List running containers
 ps:
@@ -207,5 +213,5 @@ ps:
 # Pre-create + chown service config dirs (run once after first clone)
 # SERVICES_DIR defaults to /mnt/storage/docker/data; override with `just dirs SERVICES_DIR=/custom/path`
 dirs SERVICES_DIR="/mnt/storage/docker/data" PUID="1000" PGID="1000":
-    mkdir -p "{{SERVICES_DIR}}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,sabnzbd/config}
-    chown -R "{{PUID}}":"{{PGID}}" "{{SERVICES_DIR}}"
+    mkdir -p "{{ SERVICES_DIR }}"/{jellyfin/config,seerr/config,radarr,sonarr,prowlarr,profilarr/config,bazarr/config,decypharr/configs,sabnzbd/config}
+    chown -R "{{ PUID }}":"{{ PGID }}" "{{ SERVICES_DIR }}"

@@ -89,6 +89,7 @@ would be unreliable without trusting `X-Forwarded-For` (which reintroduces spoof
    **Security → WAF → Custom rules** (or **Firewall → IP Access Rules**).
 
 2. Create a rule:
+
    - Field: **Country**, operator: **is not**, value: **United States**
    - Action: **Block**
 
