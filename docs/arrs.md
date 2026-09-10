@@ -38,6 +38,10 @@ All services share the `internal` Docker network, so every container reaches the
 Rule of thumb: when any UI asks for another app's **URL + API key**, use the
 `http://<service>:<port>` from the table and the key from the target app.
 
+> Run `just wiring` on the server first — it probes every pairing's reachability
+> and prints each URL + API key (read from `$CONFIG_DIR` on disk) for every
+> section below, including the Decypharr client spec.
+
 Sanity check any link from inside the network:
 `docker exec <service> curl -fsS http://sonarr:8989/ping`.
 

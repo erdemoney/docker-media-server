@@ -414,6 +414,130 @@ bootstrap-torrentio CONFIG_DIR="/mnt/storage/docker/data":
     @docker compose -f stacks/media-server/compose.yaml restart prowlarr 2>/dev/null \
         || echo "note: prowlarr is not running, the definition will load on next just up"
 
+# Print a wiring cheat sheet for the *arrs: probes intra-stack reachability and
+# reads each app's API key from $CONFIG_DIR so you can paste the right values
+# into every UI (docs/arrs.md has the full walkthrough). Read-only; run on the
+# server. CONFIG_DIR is taken from stacks/media-server/.env (custom via
+# `just init`); override positionally: just wiring /custom/path
+wiring CONFIG_DIR="":
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    if [ -n "{{ CONFIG_DIR }}" ]; then
+        CONFIG_DIR="{{ CONFIG_DIR }}"
+    else
+        CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+        CONFIG_DIR="${CONFIG_DIR:-/mnt/storage/docker/data}"
+    fi
+    echo "config dir: $CONFIG_DIR"
+    echo
+
+    CS=stacks/media-server/compose.yaml
+    TO=""; command -v timeout >/dev/null 2>&1 && TO="timeout 5"
+    PING_SRC=""
+    for c in sonarr radarr prowlarr bazarr; do
+        if $TO docker compose -f "$CS" exec -T "$c" true >/dev/null 2>&1; then
+            PING_SRC=$c
+            break
+        fi
+    done
+
+    echo "== intra-network reachability =="
+    echo "(pinged from $PING_SRC; FAIL means the peer is not running or still starting)"
+    if [ -z "$PING_SRC" ]; then
+        echo "  no running exec source (sonarr/radarr/prowlarr/bazarr all down) - start the stack, then re-run"
+    else
+        for p in jellyfin:8096 seerr:5055 radarr:7878 sonarr:8989 prowlarr:9696 profilarr:6868 bazarr:6767 decypharr:8282; do
+            if $TO docker compose -f "$CS" exec -T "$PING_SRC" bash -c "exec 3<>/dev/tcp/$p" >/dev/null 2>&1; then
+                printf '  ok    %s\n' "$p"
+            else
+                printf '  FAIL  %s\n' "$p"
+            fi
+        done
+    fi
+
+    arr_key() {   # $1 = app name; echoes the ApiKey from its config.xml
+        local f="$CONFIG_DIR/$1/config.xml"
+        if [ ! -f "$f" ]; then
+            echo "(no $1/config.xml - start $1 once so it writes its config)"
+            return 1
+        fi
+        awk -F'[<>]' '
+            /<ApiKey>/ {
+                s=$0; sub(/^.*<ApiKey>/,"",s); sub(/<\/ApiKey>.*$/,"",s)
+                gsub(/^[ \t]+|[ \t]+$/,"",s)
+                if (s) { print s; exit }
+                if (getline > 0) { sub(/^[ \t]+|[ \t]+$/,"",$0); print; exit }
+            }' "$f" || true
+    }
+
+    dcy_token() {   # echoes decypharr's api_token from its config.json
+        local f="$CONFIG_DIR/decypharr/configs/config.json"
+        if [ ! -f "$f" ]; then
+            echo "(no decypharr/configs/config.json - run the decypharr wizard first)"
+            return 1
+        fi
+        local t
+        t=$(sed -n 's/.*"api_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | tail -n1)
+        if [ -z "$t" ]; then
+            echo "(no api_token yet - finish decypharr auth setup)"
+            return 1
+        fi
+        echo "$t"
+    }
+
+    SONARR_KEY=$(arr_key sonarr)
+    RADARR_KEY=$(arr_key radarr)
+    PROWLARR_KEY=$(arr_key prowlarr)
+    DCY_TOKEN=$(dcy_token)
+
+    echo
+    echo "== API keys (read from $CONFIG_DIR) =="
+    printf '  sonarr      %s\n' "$SONARR_KEY"
+    printf '  radarr      %s\n' "$RADARR_KEY"
+    printf '  prowlarr    %s\n' "$PROWLARR_KEY"
+    case "$DCY_TOKEN" in
+        "(no"*) printf '  decypharr   %s\n' "$DCY_TOKEN" ;;
+        *) printf '  decypharr   %s  (Settings -> Auth; regenerate via POST /api/refresh-token)\n' "$DCY_TOKEN" ;;
+    esac
+
+    echo
+    echo "== prowlarr -> Settings -> Apps (indexer sync) =="
+    printf '  Sonarr  url http://sonarr:8989  api key %s\n' "$SONARR_KEY"
+    printf '  Radarr  url http://radarr:7878  api key %s\n' "$RADARR_KEY"
+
+    echo
+    echo "== sonarr -> Settings -> Download Clients -> add qBittorrent (Decypharr) =="
+    echo "  host decypharr  port 8282"
+    printf '  username http://sonarr:8989\n  password %s\n  category sonarr  priority 0\n' "$SONARR_KEY"
+    echo
+    echo "== radarr -> Settings -> Download Clients -> add qBittorrent (Decypharr) =="
+    printf '  username http://radarr:7878\n  password %s\n  category radarr  priority 0\n' "$RADARR_KEY"
+
+    echo
+    echo "== decypharr -> Settings -> Arrs (outbound / queue cleanup) =="
+    printf '  Sonarr  host http://sonarr:8989  token %s\n' "$SONARR_KEY"
+    printf '  Radarr  host http://radarr:7878  token %s\n' "$RADARR_KEY"
+
+    echo
+    echo "== bazarr -> Settings -> Sonarr / Radarr =="
+    printf '  http://sonarr:8989  %s\n' "$SONARR_KEY"
+    printf '  http://radarr:7878  %s\n' "$RADARR_KEY"
+
+    echo
+    echo "== profilarr -> Settings -> connections (add Sonarr/Radarr) =="
+    printf '  http://sonarr:8989  %s\n' "$SONARR_KEY"
+    printf '  http://radarr:7878  %s\n' "$RADARR_KEY"
+
+    echo
+    echo "== seerr -> Settings =="
+    echo "  jellyfin  http://jellyfin:8096  + an API key created in Jellyfin Dashboard -> API Keys"
+    printf '  radarr    http://radarr:7878  %s\n' "$RADARR_KEY"
+    printf '  sonarr    http://sonarr:8989  %s\n' "$SONARR_KEY"
+
+    echo
+    echo "done. Paste URL + key pairs from the sections above; test each connection in the UI."
+
 # Pre-create + chown service config dirs (idempotent; also called by `just up`)
 # CONFIG_DIR defaults to /mnt/storage/docker/data; override positionally: just dirs /custom/path
 # No-op if the dirs already exist and ownership is already PUID:PGID.

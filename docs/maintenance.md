@@ -24,6 +24,7 @@ nav_order: 11
 | `just validate`                 | `docker compose config -q` on every stack                                         |
 | `just dirs`                     | pre-create + chown service config dirs (idempotent; called by `just up`)          |
 | `just bootstrap-torrentio`      | install the Torrentio indexer definition into prowlarr (see [Indexers](indexers)) |
+| `just wiring`                   | probe the internal network + print every URL/API key the \*arrs need (see [The \*arrs](arrs)) |
 | `just networks`                 | create the shared `internal`/`external` networks                                  |
 
 Formatting and linting are handled by **pre-commit** directly (`pre-commit install` once, then

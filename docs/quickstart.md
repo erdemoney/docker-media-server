@@ -127,7 +127,7 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
   `Certificate` appears in the ACME panel for `*.DOMAIN`.
 - CrowdSec seeded its config under `$CONFIG_DIR/crowdsec/config` — see [Security](security).
 - Jellyfin's admin account is created on first login (feed its key to Seerr later).
-- `docker exec jellyfin nvidia-smi` if you expect GPU transcoding (see
-  [Maintenance](maintenance)).
 
-Then continue to [The \*arrs](arrs) for app-to-app wiring.
+Then run `just wiring` on the server — it probes the internal network and prints
+every URL + API key you need to paste, then continue to [The \*arrs](arrs) for
+the full walkthrough.
