@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.backup.example
 
 data/traefik/acme.json
 data/traefik/logs/

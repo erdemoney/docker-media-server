@@ -26,6 +26,8 @@ nav_order: 11
 | `just bootstrap-torrentio`      | install the Torrentio indexer definition into prowlarr (see [Indexers](indexers)) |
 | `just wiring`                   | probe the internal network + print every URL/API key the \*arrs need (see [The \*arrs](arrs)) |
 | `just networks`                 | create the shared `internal`/`external` networks                                  |
+| `just backup-init`              | create the restic repository in `RESTIC_REPOSITORY` (idempotent; see below)      |
+| `just backup` / `backup-list` / `backup-check` / `backup-prune` / `backup-restore` | restic snapshots, integrity, retention, restore — see [Repo backups](#repo-backups-with-restic) |
 
 Formatting and linting are handled by **pre-commit** directly (`pre-commit install` once, then
 hooks run automatically on every commit — same scope as CI: syntax + secret scanning). Gitleaks
@@ -47,20 +49,77 @@ Take your storage's native snapshot/backup mechanism to the following:
 Nothing in compose is precious — any container is one `just up` from a clean slate. The config
 directory is the only state you can't rebuild; if you snapshot exactly one thing, snapshot that.
 
-### Offsite backups with restic
+### Offsite restic backups of the repo
 
-Native snapshots don't protect against a dead disk or a stolen box — keep an **offsite copy** of
-`$CONFIG_DIR` with [restic](https://restic.net). It deduplicates, encrypts, and backs up to
-most object storage (S3-compatible, Backblaze B2, SFTP, ...):
+The native snapshots above cover the data; the other state that can't be rebuilt from the repo's
+`main` is the **repo working tree itself** — `stacks/*/.env` hold every secret and `data/` holds
+runtime config. Back it up too, encrypted and deduplicated, with [restic](https://restic.net),
+run in a container by `just` (nothing to install). One-time setup:
 
-```bash
-restic -r b2:my-bucket:media-backup init          # once
-restic -r b2:my-bucket:media-backup backup $CONFIG_DIR   # daily via cron/systemd timer
+```
+just init          # answer yes to "restic backups" (or copy .env.backup.example -> .env.backup by hand)
+just backup-init   # create the restic repository (idempotent)
+just backup        # snapshot the repo; schedule it daily via a systemd timer or cron
 ```
 
-Point it at the config dir (movie/TV show *databases*, watch history, and app settings live in
-each app's config) rather than raw media — media is re-downloadable, your Sonarr/Radarr/Jellyfin
-metadata is not. Test restores periodically; an untested backup is a gamble.
+`.env.backup` is passed to the container with `docker run --env-file`, so it only contains restic's
+standard shell variables — **backend-agnostic**. Set `RESTIC_REPOSITORY` to whatever you use:
+
+| Backend       | `RESTIC_REPOSITORY` example               |
+| ------------- | ----------------------------------------- |
+| local dir     | `/mnt/backups/restic`                     |
+| SFTP          | `sftp:user@host:/srv/restic`              |
+| S3-compatible | `s3:s3.amazonaws.com/my-bucket`           |
+| Backblaze B2  | `b2:my-bucket:my-path`                    |
+| Azure / GCS   | `azure:container:/path` / `gs:bucket:/path` |
+| rclone        | `rclone:remote:path`                      |
+
+Backends that need credentials get them added to `.env.backup` too (`AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) — they are
+forwarded the same way. Snapshots **exclude `.git` and `.env.backup`**, so the unencrypted
+`RESTIC_PASSWORD` is never stored inside the backups; keep that password somewhere safe or you
+cannot restore anything.
+
+Other recipes:
+
+| Command                     | What it does                                               |
+| --------------------------- | ---------------------------------------------------------- |
+| `just backup-list`          | list snapshots                                             |
+| `just backup-check`         | verify repository integrity (add `--read-data` for a full audit) |
+| `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.backup` |
+| `just backup-restore [<id>]`| restore into the repo working tree (default: latest)       |
+
+A daily systemd timer (place both units in `/etc/systemd/system/`):
+
+```ini
+# restic-backup.timer
+[Unit]
+Description=Nightly restic backup of the media repo
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```ini
+# restic-backup.service
+[Unit]
+Description=Nightly restic backup of the media repo
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/docker-media-server
+ExecStart=/usr/local/bin/just backup
+```
+
+`just backup-restore` re-creates the repo working tree (`data/` + all `.env` files); `.env.backup`
+survives restores. Drill a restore into a scratch clone periodically — an untested backup is a
+gamble. Fragile-chain warning: this protects the repo, and native snapshots protect `$CONFIG_DIR`
++ media, but a thief taking the box still wants you to have *remote* copies of `$CONFIG_DIR` too —
+if that's your threat model, point a second restic profile at it (see [The \*arrs](arrs)).
 
 ## Post-deploy checks
 
