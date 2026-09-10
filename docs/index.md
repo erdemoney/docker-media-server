@@ -8,8 +8,8 @@ nav_order: 1
 A self-hosted media stack run through Docker, with a single GitHub repo as the source of truth
 for compose files, configs that live in code, and all setup/ops documentation. The same
 checkout runs on any Docker host (a dedicated box, a VM, a NAS appliance, ...) — the only hard
-prerequisites are Docker, `just`, and a directory for the repo. Platform-specific notes for one
-concrete deployment live in `truenas.md` at the repo root; everything here stays host-agnostic.
+prerequisites are Docker, `just`, and a directory for the repo. Everything here stays
+host-agnostic.
 
 ```text
                         Internet

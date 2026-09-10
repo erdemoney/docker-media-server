@@ -44,7 +44,6 @@ Take your storage's native snapshot/backup mechanism to the following:
 
 Nothing in compose is precious — any container is one `just up` from a clean slate. The config
 directory is the only state you can't rebuild; if you snapshot exactly one thing, snapshot that.
-(For a ZFS-based host the concrete snapshot commands live in `truenas.md` in the repo root.)
 
 ## Post-deploy checks
 
@@ -70,8 +69,7 @@ If the compose gives Jellyfin a GPU, verify it's actually attached:
 docker exec jellyfin nvidia-smi
 ```
 
-Hardware specifics (driver injection, host updates) are host-dependent — the note for a TrueNAS
-deployment lives in `truenas.md` in the repo root.
+Hardware specifics (driver injection, host updates) are host-dependent.
 
 ## Troubleshooting
 
