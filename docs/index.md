@@ -46,8 +46,8 @@ reached from the public internet, LAN, or Tailnet. No per-app TLS configuration 
 
 A streaming-only setup like this doesn't need much. An **Intel N100 or N150 mini PC** (~$100–150
 new) handles it comfortably: 4 low-power cores, hardware HEVC/AV1 decode for Jellyfin
-transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM, a small NVMe for the OS and
-config, and whatever storage you mount for the media library (external USB, NFS, ZFS pool, ...).
+transcoding, fanless, and sips ~6W idle. Pair it with 8–16 GB RAM and a small NVMe for the OS and config — this stack streams from debrid
+and never stores a media library on the host.
 The N100's iGPU handles 4K direct-play and tone-mapping without breaking a sweat.
 
 ## Operating system

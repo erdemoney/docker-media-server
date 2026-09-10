@@ -39,19 +39,17 @@ CLI.
 
 ## Backups
 
-Take your storage's native snapshot/backup mechanism to the following:
-
-- **frequent on the config directory** (everything under `$CONFIG_DIR`, includes `acme.json`);
-  it changes and matters.
-- **daily/weekly on the media library.** Keep the schedules separate — don't mix config
-  snapshots with bulk media.
+This is a pure-debrid stack — the host holds nothing but config, so the whole backup story is
+one target: the **config directory** (everything under `$CONFIG_DIR` — `acme.json`, the Traefik
+configs, and each app's own state like the \*arr databases). Snapshot it frequently with your
+storage's native mechanism.
 
 Nothing in compose is precious — any container is one `just up` from a clean slate. The config
 directory is the only state you can't rebuild; if you snapshot exactly one thing, snapshot that.
 
 ### Offsite restic backups of the repo
 
-The native snapshots above cover the data; the other state that can't be rebuilt from the repo's
+The native snapshots above cover that config state; the other state that can't be rebuilt from the repo's
 `main` is the **repo working tree itself** — `stacks/*/.env` hold every secret and `data/` holds
 runtime config. Back it up too, encrypted and deduplicated, with [restic](https://restic.net),
 run in a container by `just` (nothing to install). One-time setup:
@@ -144,7 +142,7 @@ missing from the snapshot are kept (no `--delete`); restored files overwrite cur
 place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.backup` survives
 restores. Drill a restore into a scratch clone periodically — an untested backup is a gamble.
 Fragile-chain warning: with the default layout (`$CONFIG_DIR` inside the repo's `data/`) restic
-already covers app config state, so *media* is what native snapshots target. If you point
+already covers everything this host can't rebuild — the \*arr databases included. If you point
 `CONFIG_DIR` at external storage, cover that separately — and either way, a thief taking the box
 still wants *remote* copies of the config state: point a second restic profile at `$CONFIG_DIR`
 if it lives outside the repo (see [The \*arrs](arrs)).
