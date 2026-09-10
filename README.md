@@ -26,12 +26,12 @@ with Docker Compose and driven by a single repo.
 ```
 
 **Media flow:** Prowlarr finds releases → Sonarr/Radarr grab them → Decypharr resolves debrid
-into instant files via FUSE → \*arrs hardlink into the library → Jellyfin streams to clients.
+into instant files via FUSE → \*arrs symlink them into the library → Jellyfin streams to clients.
 Seerr handles user requests.
 
 ## Key features
 
-- **Hardlink-friendly layout** — imports are instant, zero extra disk usage
+- **Nothing stored locally** — imports are symlinks into the debrid mount: instant, zero disk usage
 - **Automatic HTTPS** — Traefik issues a `*.DOMAIN` Let's Encrypt wildcard cert via Cloudflare
   DNS-01; every app UI ships on TLS, on the public internet and on LAN/Tailnet alike
 - **Automated updates** — Renovate opens PRs, CI validates every change

@@ -125,19 +125,23 @@ video), and `jellyfin` (playback):
 [Decypharr](decypharr) for the propagation details). Nothing to add by hand — just point each
 app's root folder, and Jellyfin's libraries, at subpaths of that mount.
 
-## Hardlinks (why imports are instant)
+## Imports are symlinks, not hardlinks
 
-When Radarr/Sonarr "import" a file, they don't copy it — they create a **hardlink** from the
-download location to the media library. A hardlink is a second directory entry pointing at the
-same inode: zero extra space, zero copy time, and deleting the original doesn't hurt the library
-copy (or vice versa).
+If you're coming from a traditional \*arr setup, this is the part that changes. There is no local
+download to hardlink: Decypharr hands the \*arrs a **symlink** pointing into its FUSE mount, and
+"importing" renames that link into the root folder. The payload never lands on your disk — it's
+streamed from the debrid provider at playback time.
 
-In this stack that's automatic: Decypharr resolves downloads into its FUSE mount and the \*arrs
-import *from the same mount* into root folders that sit on it — one filesystem, two directory
-entries, no disk involved.
+Hardlinks aren't available even in principle here: FUSE debrid mounts (DFS or rclone) don't
+implement `link()`, so you can't create a second directory entry for a remote file.
 
-The one constraint: **hardlinks only work within a single filesystem** — same partition, same
-volume, same mount, whatever your storage calls it. If your download location and media library
-are on different filesystems (e.g. you add a local qBittorrent/SABnzbd writing to a separate disk),
-the \*arrs fall back to a full copy, which doubles space usage and takes longer. Keep both on the
-same filesystem to keep imports instant.
+Two constraints follow, and they're the ones worth remembering:
+
+- **Keep Decypharr's download folder and the \*arr root folders on the same mount** (both under
+  `/mnt/decypharr`). Same filesystem means the import is a rename of a tiny symlink — instant. If
+  they straddle filesystems the \*arrs fall back to copying, and copying a symlink *dereferences*
+  it: the entire file gets pulled from debrid onto local disk.
+- **Every consumer must resolve the symlink target at the same path.** What's stored in the
+  library is an absolute path into the mount, so `sonarr`, `radarr`, `bazarr`, and `jellyfin` all
+  bind `/mnt/decypharr` at the identical path (see [Decypharr](decypharr)). Change it in one place
+  and that app sees a library full of dangling links.
