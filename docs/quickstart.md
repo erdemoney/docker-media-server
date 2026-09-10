@@ -27,18 +27,23 @@ git remote add upstream git@github.com:erdemoney/docker-media-server.git   # opt
 
 ## 1. Copy and fill the env files
 
-Run `just init` — it creates each stack's `.env` and fills the interactive secrets for you:
+Run `just init` — it creates each stack's `.env` and walks you through **every** variable:
 
-- Generates `CROWDSEC_BOUNCER_API_KEY` (random 32-byte key)
+- `DOMAIN` and `CONFIG_DIR` are prompted once and synced to every stack
+- Subdomains and `ENV_PUID`/`ENV_PGID` default to the example values — Enter to keep,
+  type to change
+- `CROWDSEC_BOUNCER_API_KEY` is generated automatically (random 32-byte key)
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
-- Opens the Cloudflare dashboards and prompts you to paste `CF_DNS_API_TOKEN`
-  and `CLOUDFLARE_TUNNEL_TOKEN` (leave empty to do them later)
+- Explains each Cloudflare secret, then **confirms before opening the page in your
+  browser** (and just shows the URL on a headless box), then prompts you to paste
+  `CF_DNS_API_TOKEN` and `CLOUDFLARE_TUNNEL_TOKEN` — leave empty to do them later
+- You can skip anything; empty answers fall back to the current/default value
 
 ```bash
 just init
 ```
 
-Safe to re-run — it skips anything already set and never overwrites your values.
+Safe to re-run — it shows the current values and never overwrites without your say-so.
 
 Set each variable (see `stacks/*/.env.example`):
 

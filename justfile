@@ -7,12 +7,19 @@ stack_list := "traefik cloudflared media-server"
 default:
     just --list
 
-# Copy .env.example → .env for every stack and fill the interactive secrets:
-# generates CROWDSEC_BOUNCER_API_KEY, prompts for the Traefik dashboard
-# credentials, and walks you through the Cloudflare API + tunnel tokens.
+# Full first-time setup: create each .env, then walk through every variable.
+# Secrets are generated or prompted (hidden); everything else defaults to the
+# example value (Enter = keep). Shared vars (DOMAIN, CONFIG_DIR) are synced
+# across stacks. Browser pages are only opened after confirmation, and only in
+# a GUI session. Safe to re-run — nothing is overwritten without consent.
 init:
     #!/usr/bin/env bash
     set -euo pipefail
+
+    TRAEFIK_ENV=stacks/traefik/.env
+    CLOUDFLARED_ENV=stacks/cloudflared/.env
+    MEDIA_ENV=stacks/media-server/.env
+    ALL_ENVS=("$TRAEFIK_ENV" "$CLOUDFLARED_ENV" "$MEDIA_ENV")
 
     for s in {{ stack_list }}; do
         if [ -f "stacks/$s/.env" ]; then
@@ -34,22 +41,82 @@ init:
         sed -i "s|^$2=.*|$2=$esc|" "$1"
     }
 
-    open_url() {  # best-effort: open the URL in the default browser
-        local url="$1"
-        if command -v xdg-open >/dev/null 2>&1; then
-            xdg-open "$url" >/dev/null 2>&1 &
-            disown || true
-        elif command -v open >/dev/null 2>&1; then
-            open "$url" >/dev/null 2>&1 &
-            disown || true
+    vars_defined_in() {   # echoes each .env that defines the given VAR
+        local var="$1" f
+        for f in "${ALL_ENVS[@]}"; do
+            if [ -f "$f" ] && grep -q "^$var=" "$f"; then
+                printf '%s\n' "$f"
+            fi
+        done
+    }
+
+    set_all() {   # sets VAR to VALUE in every .env that defines it
+        local var="$1" value="$2" f
+        for f in $(vars_defined_in "$var"); do
+            set_var "$f" "$var" "$value"
+        done
+    }
+
+    is_gui() {   # true when a display server (or macOS) is available
+        [ -n "${DISPLAY:-}" ] && return 0
+        [ -n "${WAYLAND_DISPLAY:-}" ] && return 0
+        case "$(uname -s)" in
+            Darwin) return 0 ;;
+        esac
+        return 1
+    }
+
+    show_or_open_url() {   # GUI: confirm first, then open. No GUI: print URL.
+        local url="$1" yn
+        if ! is_gui; then
+            echo "  -> open in a browser: $url"
+            return 0
+        fi
+        printf '  Open the page in your browser? [Y/n] '
+        read -r yn || yn=""
+        printf '\n'
+        case "$yn" in
+            ''|y|Y|yes|Yes|YES)
+                if command -v xdg-open >/dev/null 2>&1; then
+                    xdg-open "$url" >/dev/null 2>&1 &
+                    disown || true
+                elif command -v open >/dev/null 2>&1; then
+                    open "$url" >/dev/null 2>&1 &
+                    disown || true
+                else
+                    echo "  -> open in a browser: $url"
+                fi
+                ;;
+            *) echo "  -> open in a browser: $url" ;;
+        esac
+    }
+
+    prompt_value() {   # FILE VAR [hint]: show current value, Enter keeps, type to change. Writes to every file defining VAR.
+        local file="$1" var="$2" hint="${3:-}" cur ans
+        cur=$(get_var "$file" "$var") || true
+        if [ -n "$cur" ]; then
+            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+        elif [ -n "$hint" ]; then
+            printf '  %s [%s] > ' "$var" "$hint"
         else
-            echo "    -> open $url in your browser"
+            printf '  %s > ' "$var"
+        fi
+        read -r ans || ans=""
+        if [ -n "$ans" ] && [ "$ans" != "$cur" ]; then
+            set_all "$var" "$ans"
         fi
     }
 
-    TRAEFIK_ENV=stacks/traefik/.env
+    echo "== Domain and paths (shared across stacks) =="
+    prompt_value "$TRAEFIK_ENV" DOMAIN "your domain, e.g. example.com"
+    prompt_value "$TRAEFIK_ENV" CONFIG_DIR "config dir, e.g. /srv/media-server/data"
+    echo
 
-    echo "== CROWDSEC_BOUNCER_API_KEY =="
+    echo "== traefik =="
+    prompt_value "$TRAEFIK_ENV" SUB_DOMAIN_TRAEFIK
+    echo
+
+    echo "CROWDSEC_BOUNCER_API_KEY"
     if [ -n "$(get_var "$TRAEFIK_ENV" CROWDSEC_BOUNCER_API_KEY)" ]; then
         echo "  already set (stacks/traefik/.env)"
     else
@@ -58,11 +125,11 @@ init:
     fi
     echo
 
-    echo "== TRAEFIK_DASHBOARD_CREDENTIALS =="
+    echo "TRAEFIK_DASHBOARD_CREDENTIALS"
     if [ -n "$(get_var "$TRAEFIK_ENV" TRAEFIK_DASHBOARD_CREDENTIALS)" ]; then
         echo "  already set (stacks/traefik/.env)"
     else
-        echo "  htpasswd-style user:hash for the Traefik dashboard."
+        echo "  htpasswd-style user:hash for the Traefik dashboard (blank password = generate nothing, username defaults to admin)."
         printf '  dashboard username (default admin): '
         read -r dash_user || dash_user=""
         printf '  dashboard password (hidden): '
@@ -79,16 +146,16 @@ init:
     fi
     echo
 
-    echo "== CF_DNS_API_TOKEN =="
+    echo "CF_DNS_API_TOKEN"
     if [ -n "$(get_var "$TRAEFIK_ENV" CF_DNS_API_TOKEN)" ]; then
         echo "  already set (stacks/traefik/.env)"
     else
         printf '%s\n' \
-    '  Needs a Cloudflare API token for DNS-01 wildcard certs. Do this in the' \
-    '  browser that just opened:' \
-    '    1. Create a token using the "Edit zone DNS" template for your domain.' \
-    '    2. Paste it below (entry is hidden). Leave empty to set it later.'
-        open_url "https://dash.cloudflare.com/profile/api-tokens"
+    '  Needs a Cloudflare API token for DNS-01 wildcard certs.' \
+    '    1. dash.cloudflare.com -> My Profile -> API Tokens -> Create Token' \
+    '    2. Use the "Edit zone DNS" template for your domain.' \
+    '    3. Paste it below (hidden). Leave empty to skip; set it later.'
+        show_or_open_url "https://dash.cloudflare.com/profile/api-tokens"
         printf '  CF_DNS_API_TOKEN (hidden): '
         read -rs token || token=""
         printf '\n'
@@ -101,19 +168,17 @@ init:
     fi
     echo
 
-    CLOUDFLARED_ENV=stacks/cloudflared/.env
-
-    echo "== CLOUDFLARE_TUNNEL_TOKEN =="
+    echo "== cloudflared =="
+    echo "CLOUDFLARE_TUNNEL_TOKEN"
     if [ -n "$(get_var "$CLOUDFLARED_ENV" CLOUDFLARE_TUNNEL_TOKEN)" ]; then
         echo "  already set (stacks/cloudflared/.env)"
     else
         printf '%s\n' \
-    '  Needs a Cloudflare Tunnel token for WAN ingress. Do this in the browser' \
-    '  that just opened:' \
-    '    1. Zero Trust -> Networks -> Tunnels -> create a tunnel (Type: Cloudflared).' \
-    '    2. Copy its token and paste it below (entry is hidden). Leave empty to' \
-    '       set it later.'
-        open_url "https://one.dash.cloudflare.com"
+    '  Needs a Cloudflare Tunnel token for WAN ingress.' \
+    '    1. one.dash.cloudflare.com -> Zero Trust -> Networks -> Tunnels' \
+    '    2. Create a tunnel (Type: Cloudflared) and copy its token.' \
+    '    3. Paste it below (hidden). Leave empty to skip; set it later.'
+        show_or_open_url "https://one.dash.cloudflare.com"
         printf '  CLOUDFLARE_TUNNEL_TOKEN (hidden): '
         read -rs token || token=""
         printf '\n'
@@ -126,8 +191,16 @@ init:
     fi
     echo
 
-    echo "done. Still edit by hand (DOMAIN, SUB_DOMAIN_*, CONFIG_DIR) in"
-    echo "stacks/*/.env, then run 'just up'."
+    echo "== media-server =="
+    prompt_value "$MEDIA_ENV" ENV_PUID
+    prompt_value "$MEDIA_ENV" ENV_PGID
+    echo
+    for sub in JELLYFIN SEERR RADARR SONARR PROWLARR PROFILARR BAZARR DECYPHARR; do
+        prompt_value "$MEDIA_ENV" "SUB_DOMAIN_$sub"
+    done
+    echo
+
+    echo "done. Review stacks/*/.env, then run 'just up'."
 
 # Create the shared Docker networks (idempotent)
 networks:
