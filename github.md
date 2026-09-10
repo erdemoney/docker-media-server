@@ -11,11 +11,11 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
 
 - `.github/workflows/renovate.yml` runs daily at `06:00 UTC` (and on manual
   `workflow_dispatch`).
-- `.github/renovate.json` is the **global** Renovate config (it lives under `.github/` so
-  Renovate treats it as global config with self-hosted options — a root-level `renovate.json`
-  would be treated as _repo_ config, which forbids global-only options like `repositories`).
-  It restricts Renovate to the `docker-compose` manager, so it only looks at `image:` lines
-  in the compose files. Config summary:
+- `.github/renovate-config.json` is the **global** Renovate config. The basename deliberately
+  avoids the auto-discovered repo-config names (`renovate.json`, `.renovaterc`, ...) so Renovate
+  loads it as _global_ config, which is the only place that accepts global-only options like
+  `repositories`. It restricts Renovate to the `docker-compose` manager, so it only looks at
+  `image:` lines in the compose files. Config summary:
   - `config:recommended` — sane global defaults
   - `repositories` — `erdemoney/docker-media-server` (self-hosted Renovate needs the repo
     told explicitly; the Action does not auto-discover)
@@ -44,7 +44,7 @@ for a quick CLI look). Bumps happen as reviewable PRs instead of by hand.
 
 ## First-time onboarding
 
-1. Add `.github/renovate.json` and `.github/workflows/renovate.yml` (already in this repo).
+1. Add `.github/renovate-config.json` and `.github/workflows/renovate.yml` (already in this repo).
 2. Set the `RENOVATE_TOKEN` secret (above).
 3. Push everything: `git push origin main`.
 4. Run once manually: GitHub -> Actions -> _Renovate_ -> _Run workflow_, or wait for the
@@ -87,5 +87,5 @@ apply whenever. Major-bump PRs deserve release-note reading first.
 - Want to validate the config locally before pushing:
   ```
   docker run --rm -v "$PWD":/repo ghcr.io/renovatebot/renovate:latest \
-      renovate-config-validator /repo/.github/renovate.json
+      renovate-config-validator /repo/.github/renovate-config.json
   ```
