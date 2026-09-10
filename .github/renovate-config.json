@@ -1,31 +1,52 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "onboarding": false,
-  "repositories": ["erdemoney/docker-media-server"],
-  "gitAuthor": "renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>",
-  "enabledManagers": ["docker-compose"],
   "dependencyDashboard": true,
   "dependencyDashboardTitle": "Media stack dependency dashboard",
-  "timezone": "UTC",
-  "schedule": ["* 6 * * *"],
-  "labels": ["renovate"],
-  "separateMajorMinor": true,
-  "separateMinorPatch": true,
+  "enabledManagers": [
+    "docker-compose"
+  ],
+  "extends": [
+    "config:recommended"
+  ],
+  "gitAuthor": "renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>",
+  "labels": [
+    "renovate"
+  ],
+  "onboarding": false,
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": false,
       "groupName": "media-stack minor/patch",
       "groupSlug": "media-stack-minor-patch",
-      "labels": ["renovate", "minor/patch"],
-      "automerge": false
+      "labels": [
+        "renovate",
+        "minor/patch"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ]
     },
     {
-      "matchUpdateTypes": ["major"],
+      "automerge": false,
       "groupName": "media-stack major",
       "groupSlug": "media-stack-major",
-      "labels": ["renovate", "major"],
-      "automerge": false
+      "labels": [
+        "renovate",
+        "major"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ]
     }
-  ]
+  ],
+  "repositories": [
+    "erdemoney/docker-media-server"
+  ],
+  "schedule": [
+    "* 6 * * *"
+  ],
+  "separateMajorMinor": true,
+  "separateMinorPatch": true,
+  "timezone": "UTC"
 }

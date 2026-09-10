@@ -1,5 +1,5 @@
 repos:
-  # Syntax / hygiene checks (no formatting — formatting lives in CI only)
+  # Syntax / hygiene checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -7,6 +7,11 @@ repos:
         args: ["--unsafe"]
       - id: check-json
       - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: pretty-format-json
+        args: ["--autofix"]
 
   # Scan staged changes for hardcoded secrets / API keys (auto-downloads via Go)
   - repo: https://github.com/gitleaks/gitleaks
