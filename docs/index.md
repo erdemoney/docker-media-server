@@ -96,7 +96,9 @@ automatically:
   Point it at the internal service URLs (`http://sonarr:8989`, ...) and it just works.
 - **qBittorrent** — if you prefer local torrents over debrid, add it as an alternative download
   client alongside Decypharr.
-- **Overseerr** — alternative to Seerr for media requests (same role, different UI).
+- **SABnzbd** — same idea for Usenet: add it as a **Sabnzbd** download client in the \*arrs
+  (Decypharr already exposes a compatible API, but a local SABnzbd gives you real Usenet
+  downloads to the filesystem).
 
 ## External references
 
