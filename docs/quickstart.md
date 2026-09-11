@@ -22,7 +22,9 @@ Why the networks and dirs matter is covered in [The \*arrs](arrs).
 
 This repo is meant to be **forked**. Fork it to your own GitHub account, then clone your fork —
 that gives you a personal copy to customize (domain, secrets, service list) while still being able
-to pull upstream improvements:
+to pull upstream improvements. **Make the fork `Private`** (Settings → change visibility) — it
+deploys this stack from your fork, and a misstep that commits a secret to a public fork leaks it
+to the world:
 
 ```bash
 git clone git@github.com:<you>/docker-media-server.git ~/docker/media-server
