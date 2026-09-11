@@ -71,6 +71,53 @@ template, never the rendered file** — `just up` overwrites the output every ru
 and `crowdsec-acquis.yaml` need no rendering and are mounted as tracked files (`dynamic.yml`
 resolves its one secret at runtime with Traefik's Go templating).
 
+## Test before the tunnel
+
+The wildcard cert issues before the tunnel exists (DNS-01 needs no inbound ports), and LAN/Tailnet
+traffic already reaches Traefik `:443` directly — so the *only* thing standing between you and a
+testable stack is that `jellyfin.<DOMAIN>` & co. resolve to the server's LAN IP on whatever client
+you test from. Traefik routes purely by exact hostname, so once a request lands with the right
+`Host:` header the whole pipeline (routing → TLS → app) is the real deal — same cert a visitor
+will get, browser-trustable and all. No Cloudflare public setup involved yet.
+
+**Recommended: a local DNS record.** One rule covers the whole LAN, permanently — it doubles as
+split-horizon DNS so LAN clients resolve to the server instead of hairpinning out through the
+tunnel. Consumer routers often only allow per-hostname records; a wildcard is better if your
+resolver supports it:
+
+- **Pi-hole / dnsmasq / AdGuard Home** (one line, wildcard):
+  ```
+  address=/<DOMAIN>/192.168.1.50
+  ```
+- **unbound** (OPNsense/pfSense):
+  ```
+  local-data: "*.<DOMAIN> A 192.168.1.50"
+  ```
+- **Router UI**: a regular A record per hostname for the ones you want to test
+  (`jellyfin.<DOMAIN> → 192.168.1.50`, `traefik.<DOMAIN> → 192.168.1.50`, ...).
+
+**Fallback: `/etc/hosts`** on the machine you're testing from (no router access needed; affects
+only that machine). Point every subdomain that exists in `stacks/media-server/.env` at the server,
+e.g.:
+
+```
+192.168.1.50   traefik.<DOMAIN> jellyfin.<DOMAIN> sonarr.<DOMAIN> radarr.<DOMAIN>
+                prowlarr.<DOMAIN> bazarr.<DOMAIN> profilarr.<DOMAIN> seerr.<DOMAIN>
+```
+
+Then verify routing and the cert:
+
+```bash
+curl -sI https://jellyfin.<DOMAIN>/            # expect 200/302 + the app
+echo | openssl s_client -connect 192.168.1.50:443 -servername jellyfin.<DOMAIN> 2>/dev/null \
+  | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"   # expect *.<DOMAIN>
+```
+
+Got a working URL? Skip the waiting: `just wiring` prints every internal URL and API key the apps
+need. Once the tunnel hostnames are added (above), decide whether local DNS stays — keeping it is
+safe and recommended; `just backup`/cron traffic, LAN access, and Traefik's dashboard then never
+depend on the tunnel being up.
+
 ## Media through the tunnel (no CDN caching)
 
 Cloudflare's content restriction (historically "Section 2.8") only applies to the **CDN
