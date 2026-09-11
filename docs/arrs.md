@@ -88,8 +88,8 @@ profile step is easy to forget.
    - **OpenSubtitles.com** — primary. The old `.org` API is shut down; stock Bazarr uses the
      `.com` API. Create an account, generate an **API key** on your profile page, enter username
      - API key. Free tier is rate-limited (~20 downloads/day); VIP removes the cap.
-   - **Podnapisi.net** — free fallback; requires a (free) account and the API key from your
-     profile settings.
+   - **subdl.com** — free fallback; grab an API key from your account panel (free tier allows
+     ~2,000 searches/day) and enter it as api key.
    - **Whisper (optional)** — AI-generated fallback when nothing clears a minimum score; needs a
      separate whisper ASR service.
 5. Rank providers by preference and raise each language's **minimum score** if subs arrive out
