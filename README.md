@@ -82,7 +82,8 @@ library → Jellyfin streams to any client. Zero local storage, immediately play
 
 > **Note:** this repo is meant to be **forked** — fork it (keep the fork **private**), then
 > clone your fork. Your deployment secrets never touch the repo; they live in git-ignored
-> `.env` files that `just init` creates.
+> `.env` files that `just init` creates. The stack is **LAN-only until you expose it** — set up
+> every app first, add public hostnames last.
 
 ```bash
 git clone git@github.com:<you>/kickstarrt.git

@@ -9,6 +9,20 @@ Public traffic path: Cloudflare edge → cloudflared tunnel (on `external`) → 
 service on `internal`. Traefik routes purely by its own `Host()` labels; the tunnel is a
 transparent pipe.
 
+## Security gate: finish setup before going public
+
+Adding a tunnel hostname opens that app to the whole internet **instantly** — and until its
+first-run wizard is done the app has **no login**, so a stranger who finds the subdomain can
+create the admin account or reconfigure the app for you. Sequence it deliberately:
+
+1. `just up`, then set up **every** app from a LAN client **before** adding any hostname — the
+   stack publishes nothing publicly until you do, so [**test before the tunnel**](#test-before-the-tunnel)
+   and walk through the app setup calmly. Same URL, same cert the internet will get.
+2. Minimum before exposing each app: its **admin account exists and auth is on** — Jellyfin
+   (admin created on first login), Sonarr/Radarr/Prowlarr/Bazarr/Profilarr (Settings → General →
+   Authentication), Seerr (admin on first login), Decypharr (wizard completed).
+3. **Only then** add public hostnames below.
+
 ## Adding a public hostname (GUI)
 
 This cloudflared tunnel is **remotely-managed (token-only)** — public hostnames are configured in
