@@ -110,13 +110,33 @@ resolver supports it:
 - **Router UI**: a regular A record per hostname for the ones you want to test
   (`jellyfin.<DOMAIN> → 192.168.1.50`, `traefik.<DOMAIN> → 192.168.1.50`, ...).
 
-**Fallback: `/etc/hosts`** on the machine you're testing from (no router access needed; affects
-only that machine). Point every subdomain that exists in `stacks/media-server/.env` at the server,
-e.g.:
+**Fallback: a hosts-file entry** on the machine you're testing from (no router access needed;
+affects only that machine — all the OSes do this the same way, just different paths). Point every
+subdomain that exists in `stacks/media-server/.env` at the server, e.g.:
 
 ```
 192.168.1.50   traefik.<DOMAIN> jellyfin.<DOMAIN> sonarr.<DOMAIN> radarr.<DOMAIN>
                 prowlarr.<DOMAIN> bazarr.<DOMAIN> profilarr.<DOMAIN> seerr.<DOMAIN>
+```
+
+Where to edit it (admin rights needed, then flush the DNS cache):
+
+- **macOS / Linux**: `/etc/hosts`… then
+  ```
+  sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+  ```
+  (Linux: no flush needed — or `systemctl restart systemd-resolved` /**
+  `sudo nscd -i hosts` if it's being stubborn).
+- **Windows**: `C:\Windows\System32\drivers\etc\hosts` — open Notepad as **Administrator** to
+  edit it, then
+  ```
+  ipconfig /flushdns
+  ```
+
+Check the entry is live before poking at Traefik:
+
+```bash
+nslookup jellyfin.<DOMAIN>     # Windows: use nslookup.exe; should answer 192.168.1.50
 ```
 
 Then verify routing and the cert:
