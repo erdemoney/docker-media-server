@@ -1,6 +1,6 @@
 <div align="center">
 
-# kickstArrt
+# kickst**Arr**t
 
 **A self-hosted media stack that runs itself.** Jellyfin + the \*arrs + a debrid gateway, fronted
 by Cloudflare, guarded by CrowdSec, terminated by Traefik — all defined in one repo and brought
@@ -17,7 +17,7 @@ up with a single command.
 
 ---
 
-kickstArrt wires together everything a media library needs — **instant, debrid-based streaming
+kickst**Arr**t wires together everything a media library needs — **instant, debrid-based streaming
 that keeps nothing on disk**, automatic TLS, and edge security — as code. The whole stack runs
 on one Docker host, and the same checkout deploys to a dedicated box, a VM, or a NAS appliance.
 
