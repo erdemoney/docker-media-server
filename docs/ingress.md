@@ -1,6 +1,6 @@
 ---
 title: Ingress
-nav_order: 7
+nav_order: 8
 ---
 
 # Ingress: Traefik + Cloudflare tunnel
@@ -117,6 +117,38 @@ sees the cloudflared container, so a Traefik-side geoblock would be unreliable w
 Notes: country comes from the edge IP (VPNs bypass it); LAN/Tailnet traffic never traverses
 Cloudflare, so this does not affect internal access. (This same pattern is also where you'd
 enforce any other zone-wide WAF rules.)
+
+## Authentication with Cloudflare Access
+
+CrowdSec decides **which IPs** are allowed; Cloudflare Access decides **which identities**. It
+works at the edge, *before* cloudflared — the Zero Trust dashboard →
+**Access → Applications** → **Add an application** → **Self-hosted** — so a request that doesn't
+pass its policy never reaches the tunnel, let alone Traefik. Set the **Application domain** to
+the hostname you want to protect (e.g. `radarr.<DOMAIN>`), create a **Policy** (any of: your
+logged-in Cloudflare / SSO identity, an email domain, or a
+[service token](https://developers.cloudflare.com/cloudflare-one/identity/service-tokens/) for
+machine clients), choose a **Session duration**, and save. Visitors get the Access login page;
+everything else in the zone stays public.
+
+Caveats and how it fits the stack:
+
+- **Do not put Access in front of Jellyfin if *external* TV/media apps must stream.** Jellyfin's
+  TV and mobile clients (LG/Samsung, Android TV, Apple TV, Roku, ...) authenticate with a device
+  **token**, not a browser, and cannot complete Cloudflare Access's interactive login — they fail
+  to connect. LAN/Tailnet clients bypass Access anyway, so this only affects access from outside
+  the house; still, a public `jellyfin.<DOMAIN>` must stay in front of Access if any external app
+  should work. Leave it unprotected rather than breaking clients — Jellyfin's own accounts still
+  guard it, and the web UI is unaffected. (A service token is the workaround for
+  machine-to-machine clients that can send headers, not for the TV apps, which can't.)
+- It is an extra layer over each app's own auth (Jellyfin accounts, the Traefik dashboard's
+  basic-auth) — belt-and-suspenders, not a replacement. Rejected traffic never reaches the
+  tunnel container, so Traefik and the apps only ever see approved requests.
+- It composes with CrowdSec at different layers: Access filters unauthenticated humans at the
+  edge while CrowdSec still blocks scanner IPs inside Traefik. Enable both; neither interferes
+  with the other's bypasses (LAN/VPN users pass Access too if the `traefik.<DOMAIN>` dashboard
+  and media sit behind it).
+- LAN/Tailnet access goes straight to Traefik and never traverses the edge, so Access only
+  applies to the public hostnames — same as the [geolock](#geolock-optional-eg-usa-only) above.
 
 ## Traefik dashboard
 

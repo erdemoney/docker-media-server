@@ -85,8 +85,8 @@ justfile                 ops recipes (just up, just update-all, ...)
 | [The \*arrs](arrs)         | shared networks, internal DNS names, API-key wiring between all apps |
 | [Indexers](indexers)       | Prowlarr, the Torrentio debrid indexer, AltHub                       |
 | [Decypharr](decypharr)     | debrid gateway: wizard, arr integration, mounts                      |
-| [Ingress](ingress)         | Traefik + Cloudflare tunnel: public hostnames, cache bypass, geolock |
-| [Security](security)       | CrowdSec WAF and IP blocking                                         |
+| [Ingress](ingress)         | Traefik + Cloudflare tunnel: public hostnames, cache bypass, geolock, Access auth |
+| [Security](security)       | CrowdSec WAF and IP blocking, fail-open/bypass behavior                          |
 | [Services](services)       | recommended debrid/Usenet subscriptions                              |
 | [Updates](updates)         | Renovate PR pipeline + CI checks end to end                          |
 | [Maintenance](maintenance) | day-to-day ops, backups, post-deploy checks                          |

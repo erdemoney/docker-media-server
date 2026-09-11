@@ -103,7 +103,7 @@ the [Quickstart](https://erdemoney.github.io/kickstarrt/quickstart).
 
 - [**Quickstart**](https://erdemoney.github.io/kickstarrt/quickstart) — prerequisites, fork, first bring-up
 - [**Services**](https://erdemoney.github.io/kickstarrt/services) · [**The \*arrs**](https://erdemoney.github.io/kickstarrt/arrs) · [**Decypharr**](https://erdemoney.github.io/kickstarrt/decypharr) · [**Indexers**](https://erdemoney.github.io/kickstarrt/indexers)
-- [**Ingress**](https://erdemoney.github.io/kickstarrt/ingress) — tunnel, TLS, geolock, media caching
-- [**Security**](https://erdemoney.github.io/kickstarrt/security) — CrowdSec + Cloudflare Access
+- [**Ingress**](https://erdemoney.github.io/kickstarrt/ingress) — tunnel, TLS, geolock, media caching, Cloudflare Access auth
+- [**Security**](https://erdemoney.github.io/kickstarrt/security) — CrowdSec WAF
 - [**Maintenance**](https://erdemoney.github.io/kickstarrt/maintenance) — backups, restic, restores
 - [**Updates & CI**](https://erdemoney.github.io/kickstarrt/updates) — Renovate, validation, releases
