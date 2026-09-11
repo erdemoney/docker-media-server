@@ -78,9 +78,8 @@ it for the documented backend, **Cloudflare R2** — zero egress, no minimums, s
 the rest of this stack. (Backblaze B2 is cheaper raw storage; every backend works, but you're
 on your own if you deviate — see below.)
 
-On an older checkout the file was named `.env.backup` and the restore recipe's exclusion of the
-credentials file was the only diff; `git mv .env.backup .env.restic` carries a configured repo
-over.
+On an older checkout the file was named `.env.backup`; `git mv .env.backup .env.restic` carries
+a configured repo over.
 
 #### Cloudflare R2 (the documented path)
 
@@ -120,9 +119,10 @@ container, which the recipes don't do.)
 
 Credential vars live in `.env.restic` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) and are forwarded the same way.
-Snapshots **exclude `.git` and `.env.restic`**, so the unencrypted
-`RESTIC_PASSWORD` is never stored inside the backups; keep that password somewhere safe or you
-cannot restore anything.
+Snapshots **exclude `.git`** and include `.env.restic` with `RESTIC_PASSWORD` blanked out: the
+recipe mounts a redacted copy into the container, so the restic config (R2 bucket, region,
+retention) is backed up while the repo's encryption key never is. Keep that password somewhere
+safe, separately — without it the repository is unrecoverable.
 
 Other recipes:
 
