@@ -278,10 +278,10 @@ init:
     echo
 
     echo "== restic backups (optional) =="
-    BACKUP_ENV=.env.backup
+    BACKUP_ENV=.env.restic
     if [ ! -f "$BACKUP_ENV" ]; then
-        cp .env.backup.example .env.backup
-        echo "created $BACKUP_ENV from .env.backup.example"
+        cp .env.restic.example .env.restic
+        echo "created $BACKUP_ENV from .env.restic.example"
     fi
     if [ -n "$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)" ] && [ -n "$(get_var "$BACKUP_ENV" RESTIC_PASSWORD)" ]; then
         echo "  already configured ($(get_var "$BACKUP_ENV" RESTIC_REPOSITORY))"
@@ -291,7 +291,7 @@ init:
     '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container; the' \
     '  values below come from dash.cloudflare.com -> R2 (Create bucket, then Manage R2' \
     '  API Tokens). Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
-    "  .env.backup - that's the only supported deviation."
+    "  .env.restic - that's the only supported deviation."
         printf '  Configure R2 restic backups now? [y/N] '
         read -r yes_backup || yes_backup=""
         case "$yes_backup" in
@@ -346,10 +346,10 @@ init:
             if [ -n "$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)" ] && [ -n "$(get_var "$BACKUP_ENV" RESTIC_PASSWORD)" ]; then
                 echo "  restic configured (R2) - next: 'just backup-init', then 'just backup'."
             else
-                echo "  left incomplete - fill RESTIC_REPOSITORY + RESTIC_PASSWORD in .env.backup later."
+                echo "  left incomplete - fill RESTIC_REPOSITORY + RESTIC_PASSWORD in .env.restic later."
             fi
             ;;
-        *) echo "  skipped - fill .env.backup later and run 'just backup-init'." ;;
+        *) echo "  skipped - fill .env.restic later and run 'just backup-init'." ;;
         esac
     fi
     echo
@@ -708,33 +708,33 @@ wiring CONFIG_DIR="":
     echo "done. Paste URL + key pairs from the sections above; test each connection in the UI."
 
 # Encrypted, deduplicated repo backups with restic, run in a container (nothing to
-# install). Documented backend is Cloudflare R2 (see how-to in the wiki); `.env.backup`
+# install). Documented backend is Cloudflare R2 (see how-to in the wiki); `.env.restic`
 # is configured by `just init` (R2_ACCOUNT_ID / R2_BUCKET / AWS creds -> RESTIC_REPOSITORY
 # + RESTIC_PASSWORD; `AWS_DEFAULT_REGION=auto` is required for R2). Deviating is one edit
-# in .env.backup - RESTIC_REPOSITORY selects any backend (local, sftp:, s3:, b2:, rclone: ...)
+# in .env.restic - RESTIC_REPOSITORY selects any backend (local, sftp:, s3:, b2:, rclone: ...)
 # and RESTIC_PASSWORD encrypts it; everything in that file is forwarded via docker run
 # --env-file, so backend credentials added there are forwarded too. Scope: the repo working
 # tree - every .env plus data/ (with the default layout that includes the $CONFIG_DIR app
 # config state too). If you point CONFIG_DIR at external storage, cover it with native
-# snapshots / a second restic profile. Configure .env.backup with `just init`, or copy
-# .env.backup.example by hand.
+# snapshots / a second restic profile. Configure .env.restic with `just init`, or copy
+# .env.restic.example by hand.
 [group('Backups')]
 backup-init:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ ! -f .env.backup ]; then
-        echo "no .env.backup - run 'just init' (answer yes to restic) or copy .env.backup.example to .env.backup"
+    if [ ! -f .env.restic ]; then
+        echo "no .env.restic - run 'just init' (answer yes to restic) or copy .env.restic.example to .env.restic"
         exit 1
     fi
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
-    if docker run --rm --env-file .env.backup -v restic-cache:/root/.cache/restic {{ restic_image }} snapshots >/dev/null 2>&1; then
-        echo "repository already initialized at $(sed -n 's|^RESTIC_REPOSITORY=\(.*\)|\1|p' .env.backup | tail -n1)"
+    if docker run --rm --env-file .env.restic -v restic-cache:/root/.cache/restic {{ restic_image }} snapshots >/dev/null 2>&1; then
+        echo "repository already initialized at $(sed -n 's|^RESTIC_REPOSITORY=\(.*\)|\1|p' .env.restic | tail -n1)"
     else
         echo "initializing restic repository ..."
-        docker run --rm --env-file .env.backup -v restic-cache:/root/.cache/restic {{ restic_image }} init
+        docker run --rm --env-file .env.restic -v restic-cache:/root/.cache/restic {{ restic_image }} init
     fi
 
 [group('Backups')]
@@ -742,58 +742,58 @@ backup:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    [ -f .env.backup ] || { echo "no .env.backup - see 'just backup-init'"; exit 1; }
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - see 'just backup-init'"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
     docker run --rm \
-        --env-file .env.backup \
+        --env-file .env.restic \
         -v restic-cache:/root/.cache/restic \
         -v "{{ justfile_directory() }}":/repo:ro \
         {{ restic_image }} backup /repo \
         --exclude /repo/.git \
-        --exclude /repo/.env.backup
+        --exclude /repo/.env.restic
 
 [group('Backups')]
 backup-list:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    [ -f .env.backup ] || { echo "no .env.backup - see 'just backup-init'"; exit 1; }
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - see 'just backup-init'"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
-    docker run --rm --env-file .env.backup -v restic-cache:/root/.cache/restic {{ restic_image }} snapshots
+    docker run --rm --env-file .env.restic -v restic-cache:/root/.cache/restic {{ restic_image }} snapshots
 
 [group('Backups')]
 backup-check:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    [ -f .env.backup ] || { echo "no .env.backup - see 'just backup-init'"; exit 1; }
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - see 'just backup-init'"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
-    docker run --rm --env-file .env.backup -v restic-cache:/root/.cache/restic {{ restic_image }} check
+    docker run --rm --env-file .env.restic -v restic-cache:/root/.cache/restic {{ restic_image }} check
 
 [group('Backups')]
 backup-prune:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    [ -f .env.backup ] || { echo "no .env.backup - see 'just backup-init'"; exit 1; }
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - see 'just backup-init'"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
     KEEP_ARGS=()
     while IFS= read -r line; do
         [[ "$line" =~ ^RESTIC_KEEP_([A-Z]+)=([0-9]+)$ ]] || continue
         [ "${BASH_REMATCH[2]}" -gt 0 ] || continue
         KEEP_ARGS+=( "--keep-${BASH_REMATCH[1],,}" "${BASH_REMATCH[2]}" )
-    done < .env.backup
+    done < .env.restic
 
     docker run --rm \
-        --env-file .env.backup \
+        --env-file .env.restic \
         -v restic-cache:/root/.cache/restic \
         {{ restic_image }} forget --prune "${KEEP_ARGS[@]}"
 
@@ -806,13 +806,13 @@ backup-restore SNAPSHOT="latest":
     #!/usr/bin/env bash
     set -euo pipefail
 
-    [ -f .env.backup ] || { echo "no .env.backup - see 'just backup-init'"; exit 1; }
-    grep -q '^RESTIC_REPOSITORY=..*$' .env.backup || { echo "set RESTIC_REPOSITORY in .env.backup"; exit 1; }
-    grep -q '^RESTIC_PASSWORD=..*$' .env.backup || { echo "set RESTIC_PASSWORD in .env.backup"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - see 'just backup-init'"; exit 1; }
+    grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
+    grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
     echo "previewing what the restore would change (dry run; nothing is written) ..."
     docker run --rm \
-        --env-file .env.backup \
+        --env-file .env.restic \
         -v restic-cache:/root/.cache/restic \
         -v "{{ justfile_directory() }}":/repo:ro \
         {{ restic_image }} restore "{{ SNAPSHOT }}" --target / --dry-run -vv
@@ -828,7 +828,7 @@ backup-restore SNAPSHOT="latest":
     echo
     echo "restoring {{ SNAPSHOT }} into {{ justfile_directory() }}/ ..."
     docker run --rm \
-        --env-file .env.backup \
+        --env-file .env.restic \
         -v restic-cache:/root/.cache/restic \
         -v "{{ justfile_directory() }}":/repo \
         {{ restic_image }} restore "{{ SNAPSHOT }}" --target /
@@ -837,7 +837,7 @@ backup-restore SNAPSHOT="latest":
 # Writes restic-backup.{service,timer} under /etc/systemd/system via sudo, then
 # enables the timer. Rerun to change the schedule. systemd is assumed on Linux
 # servers; on a host without it (Alpine, a NAS scheduler, cron) this prints a
-# fallback instead of erroring, and .env.backup is required before it will run.
+# fallback instead of erroring, and .env.restic is required before it will run.
 [group('Backups')]
 backup-schedule ON_CALENDAR="daily":
     #!/usr/bin/env bash
@@ -851,7 +851,7 @@ backup-schedule ON_CALENDAR="daily":
     }
     command -v sudo >/dev/null 2>&1 || { echo "sudo not found - install sudo or run these commands as root"; exit 1; }
     command -v just >/dev/null 2>&1 || { echo "'just' not on PATH - install just before scheduling"; exit 1; }
-    [ -f .env.backup ] || { echo "no .env.backup - configure restic first ('just init' or copy .env.backup.example)"; exit 1; }
+    [ -f .env.restic ] || { echo "no .env.restic - configure restic first ('just init' or copy .env.restic.example)"; exit 1; }
 
     JUST_BIN=$(command -v just)
     REPO="{{ justfile_directory() }}"

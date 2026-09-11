@@ -1,7 +1,7 @@
 .env
 .env.*
 !.env.example
-!.env.backup.example
+!.env.restic.example
 
 # data/ is app config state (untracked, never commit). `data/*` auto-covers any
 # new runtime subdir; only the traefik config-as-code files are tracked. Note

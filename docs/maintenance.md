@@ -68,15 +68,19 @@ runtime config. Back it up too, encrypted and deduplicated, with [restic](https:
 run in a container by `just` (nothing to install). One-time setup:
 
 ```
-just init          # answer yes to the R2 restic step (or copy .env.backup.example -> .env.backup by hand)
+just init          # answer yes to the R2 restic step (or copy .env.restic.example -> .env.restic by hand)
 just backup-init   # create the restic repository (idempotent)
 just backup        # snapshot the repo; schedule it daily via a systemd timer or cron
 ```
 
-`.env.backup` is passed to the container with `docker run --env-file`. `just init` configures
+`.env.restic` is passed to the container with `docker run --env-file`. `just init` configures
 it for the documented backend, **Cloudflare R2** — zero egress, no minimums, same account as
 the rest of this stack. (Backblaze B2 is cheaper raw storage; every backend works, but you're
 on your own if you deviate — see below.)
+
+On an older checkout the file was named `.env.backup` and the restore recipe's exclusion of the
+credentials file was the only diff; `git mv .env.backup .env.restic` carries a configured repo
+over.
 
 #### Cloudflare R2 (the documented path)
 
@@ -85,7 +89,7 @@ on your own if you deviate — see below.)
 2. **R2** → **Manage R2 API Tokens** → **Create API token** → **Admin read & write**. Save the
    **Access Key ID** and **Secret Access Key**, and note your **Account ID** (top of the R2 page).
 3. Run `just init` and answer **yes** to "Configure R2 restic backups now?" — it prompts for the
-   Account ID, bucket, and token, then writes `.env.backup`:
+   Account ID, bucket, and token, then writes `.env.restic`:
 
    ```
    RESTIC_REPOSITORY=s3:https://<ACCOUNT_ID>.r2.cloudflarestorage.com/<BUCKET>
@@ -96,7 +100,7 @@ on your own if you deviate — see below.)
    ```
 
    `AWS_DEFAULT_REGION` must stay `auto` — it's R2's only region. To configure by hand instead
-   of re-running init, copy `.env.backup.example` to `.env.backup` and fill the same values.
+   of re-running init, copy `.env.restic.example` to `.env.restic` and fill the same values.
 
 #### Other backends (on you)
 
@@ -114,9 +118,9 @@ container, which the recipes don't do.)
 | Azure / GCS   | `azure:container:/path` / `gs:bucket:/path` |
 | rclone        | `rclone:remote:path`                      |
 
-Credential vars live in `.env.backup` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+Credential vars live in `.env.restic` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) and are forwarded the same way.
-Snapshots **exclude `.git` and `.env.backup`**, so the unencrypted
+Snapshots **exclude `.git` and `.env.restic`**, so the unencrypted
 `RESTIC_PASSWORD` is never stored inside the backups; keep that password somewhere safe or you
 cannot restore anything.
 
@@ -126,7 +130,7 @@ Other recipes:
 | --------------------------- | ---------------------------------------------------------- |
 | `just backup-list`          | list snapshots                                             |
 | `just backup-check`         | verify repository integrity (for a full audit run `restic check --read-data` manually) |
-| `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.backup` |
+| `just backup-prune`         | `forget --prune` honoring `RESTIC_KEEP_*` in `.env.restic` |
 | `just backup-restore [<id>]`| dry-run preview, then restore into the repo working tree (default: latest) |
 | `just backup-schedule [<cal>]`| install a systemd timer running `just backup` (default `daily`; sudo) |
 | `just backup-unschedule`    | stop and remove the installed systemd timer (sudo)         |
@@ -154,7 +158,7 @@ the units.
 `just backup-restore` is **non-destructive**: it dry-runs first, prints exactly what would be
 restored/updated, and asks for confirmation before writing anything. Files present locally but
 missing from the snapshot are kept (no `--delete`); restored files overwrite current ones in
-place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.backup` survives
+place. It re-creates the repo working tree (`data/` + all `.env` files); `.env.restic` survives
 restores. Drill a restore into a scratch clone periodically — an untested backup is a gamble.
 Fragile-chain warning: `$CONFIG_DIR` is the repo's own `data/` dir, so restic already covers
 everything this host can't rebuild — the \*arr databases included. What it does *not* protect

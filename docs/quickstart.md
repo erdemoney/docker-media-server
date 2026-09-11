@@ -53,7 +53,7 @@ Run `just init` — it creates each stack's `.env` and walks you through **every
 - You can skip anything; empty answers fall back to the current/default value
 - Finishes by asking whether to set up **restic repo backups to Cloudflare R2** — answer
   `y` to be prompted for the R2 account ID, bucket, API token, and encryption password
-  (see [Maintenance](maintenance)), or skip (Enter) and fill `.env.backup` later
+  (see [Maintenance](maintenance)), or skip (Enter) and fill `.env.restic` later
 
 ```bash
 just init
