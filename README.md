@@ -93,8 +93,8 @@ just up        # networks → config dirs → the whole stack
 
 Requires [Docker](https://docs.docker.com/engine/install/) (check the
 [post-install steps](https://docs.docker.com/engine/install/linux-postinstall/) to run it
-non-root) and [just](https://just.systems/man/en/chapter_4.html) — `cargo install just`, a distro
-package, or the [release binaries](https://github.com/casey/just/releases).
+non-root) and [just](https://just.systems/man/en/chapter_4.html) — your distro's package manager
+or a [release binary](https://github.com/casey/just/releases).
 The full walkthrough — Cloudflare zone, tunnel, DNS secrets, staging CA, first bring-up — is in
 the [Quickstart](https://erdemoney.github.io/kickstarrt/quickstart).
 
