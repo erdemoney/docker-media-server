@@ -81,6 +81,7 @@ justfile                 ops recipes (just up, just update-all, ...)
 | Page                       | What it covers                                                       |
 | -------------------------- | -------------------------------------------------------------------- |
 | [Quickstart](quickstart)   | env files, where every secret comes from, first `just up`            |
+| [LAN access](lan-access)   | the LAN-only setup stage: resolve the stack's URLs, verify the cert  |
 | [The \*arrs](arrs)         | shared networks, internal DNS names, API-key wiring between all apps |
 | [Indexers](indexers)       | Prowlarr, the Torrentio debrid indexer, AltHub                       |
 | [Decypharr](decypharr)     | debrid gateway: wizard, arr integration, mounts                      |

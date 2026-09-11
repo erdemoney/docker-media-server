@@ -708,7 +708,7 @@ wiring CONFIG_DIR="":
     echo "done. Paste URL + key pairs from the sections above; test each connection in the UI."
 
 # Print a ready-to-paste hosts-file block for the LAN setup stage
-# (docs/ingress.md "Set up the apps over LAN"). Reads DOMAIN and every SUB_DOMAIN_* from
+# (docs/lan-access.md). Reads DOMAIN and every SUB_DOMAIN_* from
 # the stack .env files and maps them all to the server's primary LAN IP (the "src"
 # on its default route; hostname -I as a fallback). Override the address positionally
 # to generate for another machine: just hosts 10.0.0.5. Read-only — copy the block
@@ -751,7 +751,7 @@ hosts IP="auto":
         HOSTS="$HOSTS $sub.$DOMAIN"
     done <<< "$SUBS"
 
-    echo "# kickstArrt hostnames block (docs/ingress.md 'Set up the apps over LAN')"
+    echo "# kickstArrt hostnames block (docs/lan-access.md)"
     echo "# edit: /etc/hosts (macOS/Linux, admin) | C:\\Windows\\System32\\drivers\\etc\\hosts (Windows)"
     echo "$HOSTS"
     echo "# flush: macOS  sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder"

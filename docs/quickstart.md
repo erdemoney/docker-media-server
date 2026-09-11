@@ -147,8 +147,8 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
 > **The stack is LAN-only until you add tunnel hostnames — use that window.** Nothing here is
 > public yet and nothing becomes public until you expose it in [Ingress](ingress), and that's
 > intentional: an app that's live on the internet *before* its setup is done is an app with no
-> login, claimable by anyone. Do all setup through [Set up the apps over
-> LAN](ingress#set-up-the-apps-over-lan), then expose apps as the **last** step — see the
+> login, claimable by anyone. Do all setup through [LAN access](lan-access), then expose apps as
+> the **last** step — see the
 > [security gate](ingress#security-gate--finish-setup-before-going-public) in Ingress.
 
 ## 4. What to check right after boot
@@ -158,6 +158,7 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
 - CrowdSec seeded its config under `$CONFIG_DIR/crowdsec/config` — see [Security](security).
 - Jellyfin's admin account is created on first login (feed its key to Seerr later).
 
-Then run `just wiring` on the server — it probes the internal network and prints
-every URL + API key you need to paste, then continue to [The \*arrs](arrs) for
-the full walkthrough.
+Reach the stack first — [LAN access](lan-access) resolves every app's URL on a LAN/Tailnet client
+and verifies the cert — then run `just wiring` on the server (it probes the internal network and
+prints every URL + API key you need to paste) and continue to [The \*arrs](arrs) for the full
+walkthrough. All first-run setup happens over LAN, before anything is public.

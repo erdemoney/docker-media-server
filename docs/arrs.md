@@ -1,9 +1,14 @@
 ---
 title: The *arrs
-nav_order: 3
+nav_order: 4
 ---
 
 # The \*arrs: networking and app wiring
+
+> **Before you start:** reach the stack first. [LAN access](lan-access) gets every app's URL
+> resolving on a LAN/Tailnet client and verifies the cert — none of the wiring below (or any
+> first-run setup) can happen before you can open the apps. All of it is done from those LAN URLs
+> while nothing is public; exposing the stack is the **last** step ([Ingress](ingress)).
 
 ## Docker networking (shared networks)
 
