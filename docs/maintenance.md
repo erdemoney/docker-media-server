@@ -116,10 +116,9 @@ container, which the recipes don't do.)
 
 Credential vars live in `.env.restic` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) and are forwarded the same way.
-Snapshots **exclude `.git`** and include `.env.restic` with `RESTIC_PASSWORD` blanked out: the
-recipe mounts a redacted copy into the container, so the restic config (R2 bucket, region,
-retention) is backed up while the repo's encryption key never is. Keep that password somewhere
-safe, separately — without it the repository is unrecoverable.
+Snapshots take the whole working tree minus `.git`, so `.env.restic` (password included) rides
+along — encrypted like everything else. Keep `RESTIC_PASSWORD` somewhere safe separately
+anyway: without it the repository is unrecoverable.
 
 Other recipes:
 

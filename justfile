@@ -746,20 +746,10 @@ backup:
     grep -q '^RESTIC_REPOSITORY=..*$' .env.restic || { echo "set RESTIC_REPOSITORY in .env.restic"; exit 1; }
     grep -q '^RESTIC_PASSWORD=..*$' .env.restic || { echo "set RESTIC_PASSWORD in .env.restic"; exit 1; }
 
-    # .env.restic is backed up with RESTIC_PASSWORD blanked: the file's value is the
-    # repo's encryption key, so storing it inside the repo is circular (reachable only
-    # if you already have it) and fakes recoverability. A redacted copy is bind-mounted
-    # over the real file, so restic snapshots the config (R2 bucket, region, retention)
-    # without the password.
-    TMP="$(mktemp -d)"
-    trap 'rm -rf "$TMP"' EXIT
-    sed 's/^RESTIC_PASSWORD=.*/RESTIC_PASSWORD=/' .env.restic > "$TMP/.env.restic"
-
     docker run --rm \
         --env-file .env.restic \
         -v restic-cache:/root/.cache/restic \
         -v "{{ justfile_directory() }}":/repo:ro \
-        -v "$TMP/.env.restic":/repo/.env.restic:ro \
         {{ restic_image }} backup /repo \
         --exclude /repo/.git
 
