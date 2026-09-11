@@ -29,7 +29,6 @@ Radarr sync and grabs go to Decypharr for debrid streaming.
 
    ```bash
    just bootstrap-torrentio
-   # not the default CONFIG_DIR? pass it positionally: just bootstrap-torrentio /custom/path
    ```
 
    (For reference, the manual step it automates: place `torrentio.yml` from

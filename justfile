@@ -560,18 +560,13 @@ ps:
 # Bootstrap the Torrentio indexer definition into prowlarr's config dir from the
 # Prowlarr-Indexers repo (see docs/indexers.md).
 # Idempotent; re-run to re-install. Requires git + network; run on the server.
-# CONFIG_DIR is read from stacks/media-server/.env (fallback the repo's data/ dir);
-# override positionally: just bootstrap-torrentio /custom/path
-bootstrap-torrentio CONFIG_DIR="":
+# CONFIG_DIR is read from stacks/media-server/.env (fallback the repo's data/ dir).
+bootstrap-torrentio:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -n "{{ CONFIG_DIR }}" ]; then
-        CONFIG_DIR="{{ CONFIG_DIR }}"
-    else
-        CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
-        CONFIG_DIR="${CONFIG_DIR:-{{ justfile_directory() }}/data}"
-    fi
+    CONFIG_DIR=$(sed -n 's|^CONFIG_DIR=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+    CONFIG_DIR="${CONFIG_DIR:-{{ justfile_directory() }}/data}"
 
     TMP="$(mktemp -d)"
     trap 'rm -rf "$TMP"' EXIT
