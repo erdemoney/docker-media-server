@@ -35,6 +35,14 @@ the Cloudflare dashboard, not in files.
    `external` network, and every public hostname terminates at Traefik.
 5. Save.
 
+**Keep the public surface minimal.** The only hostnames users actually need are
+`seerr.<DOMAIN>` (so they can request) and `jellyfin.<DOMAIN>` (so they can watch). Everything else
+— Radarr, Sonarr, Prowlarr, Bazarr, Profilarr, Decypharr, the Traefik dashboard — is an admin
+panel: reach it over LAN/Tailnet ([LAN access](lan-access)) and leave it out of the public
+hostnames. If you need to administer from elsewhere, get in over a **VPN/Tailnet** to the server
+rather than publishing a panel — and if you do expose any panel, put
+[Cloudflare Access](#authentication-with-cloudflare-access) in front of it.
+
 For a hostname to actually work, two things must line up:
 
 - The **Traefik router** already accepts the subdomain (compose label
