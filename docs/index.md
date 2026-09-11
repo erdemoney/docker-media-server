@@ -110,6 +110,13 @@ in `.github/workflows/ci.yml`):
 - **SABnzbd** — same idea for Usenet: add it as a **Sabnzbd** download client in the \*arrs
   (Decypharr already exposes a compatible API, but a local SABnzbd gives you real Usenet
   downloads to the filesystem).
+- **Rudarr** ([rudarr](https://github.com/drygnet/rudarr)) — a polished, user-friendly web UI for
+  **Radarr**: browse the library, search, and request from a UI built for family/users rather than
+  admins. Point it at `http://radarr:7878` and it just works. Pair its Sonarr counterpart
+  **Thornarr** for TV. Because these are *user*-facing UIs, this is the clean way to let
+  non-admins use the \*arrs: give the companion UI a public hostname (or put it on the LAN) and
+  keep `radarr`/`sonarr` themselves as admin-only panels — see the
+  [keep-the-public-surface-minimal](ingress#adding-a-public-hostname-gui) note in Ingress.
 
 ## External references
 
