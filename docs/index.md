@@ -38,7 +38,7 @@ them → Decypharr resolves debrid/Usenet into instant files on a FUSE mount →
 the library on the debrid mount → Jellyfin streams to clients; Seerr handles requests from users.
 
 **HTTPS comes out of the box.** Traefik's ACME provider creates the DNS-01 challenge through
-Cloudflare (`CF_DNS_API_TOKEN`) and issues a **Let's Encrypt wildcard certificate for
+Cloudflare (`CLOUDFLARE_DNS_TOKEN`) and issues a **Let's Encrypt wildcard certificate for
 `*.DOMAIN`**, automatically renewed — so every service's UI is served over TLS, whether it's
 reached from the public internet, LAN, or Tailnet. No per-app TLS configuration is involved.
 

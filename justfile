@@ -217,8 +217,8 @@ init:
     fi
     echo
 
-    echo "CF_DNS_API_TOKEN"
-    if [ -n "$(get_var "$TRAEFIK_ENV" CF_DNS_API_TOKEN)" ]; then
+    echo "CLOUDFLARE_DNS_TOKEN"
+    if [ -n "$(get_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN)" ]; then
         echo "  already set (stacks/traefik/.env)"
     else
         printf '%s\n' \
@@ -227,11 +227,11 @@ init:
     '    2. Use the "Edit zone DNS" template for your domain.' \
     '    3. Paste it below (hidden). Leave empty to skip; set it later.'
         show_or_open_url "https://dash.cloudflare.com/profile/api-tokens"
-        printf '  CF_DNS_API_TOKEN (hidden): '
+        printf '  CLOUDFLARE_DNS_TOKEN (hidden): '
         read -rs token || token=""
         printf '\n'
         if [ -n "$token" ]; then
-            set_var "$TRAEFIK_ENV" CF_DNS_API_TOKEN "$token"
+            set_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN "$token"
             echo "  set"
         else
             echo "  skipped"

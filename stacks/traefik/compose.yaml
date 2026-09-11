@@ -6,7 +6,7 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
-      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+      CF_DNS_API_TOKEN: ${CLOUDFLARE_DNS_TOKEN}
       TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
     # dynamic.yml resolves the CrowdSec key with {{ env "..." }}, so the variable
     # has to exist in Traefik's own environment - env_file injects the whole file.

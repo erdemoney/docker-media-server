@@ -36,7 +36,7 @@ directly to Traefik on `:443` and is unaffected.
 ## Certificates (automatic)
 
 HTTPS is one-time setup, then handled for you. Traefik's ACME provider creates the
-`_acme-challenge` TXT record via the Cloudflare API (`CF_DNS_API_TOKEN`, from
+`_acme-challenge` TXT record via the Cloudflare API (`CLOUDFLARE_DNS_TOKEN`, from
 [Quickstart](quickstart)) and issues a **Let's Encrypt wildcard cert for `*.DOMAIN`** — one cert
 covering every hostname that terminates at Traefik, whether via tunnel, LAN, or Tailnet. Because
 it's the **DNS-01** challenge, certs issue before the tunnel or any app hostname exists; no

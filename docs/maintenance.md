@@ -168,7 +168,7 @@ These are the outstanding items from first bring-up — do them once, then forge
   transcode scratch never hits disk) and enable VAAPI/QSV hardware acceleration; `/dev/dri` is
   already passed in (see [Hardware](index#hardware) if the host has no iGPU).
 - **ACME/TLS** — confirm `*.DOMAIN` cert appears in Traefik's ACME panel after first up (needs a
-  working `CF_DNS_API_TOKEN` **and** a non-empty `ACME_EMAIL`; `just dirs` warns if it's blank).
+  working `CLOUDFLARE_DNS_TOKEN` **and** a non-empty `ACME_EMAIL`; `just dirs` warns if it's blank).
   `$CONFIG_DIR/traefik/acme.json` must be a 0600 *file* — `just dirs` guarantees that, because a
   directory there (what docker creates for a missing bind source) silently breaks cert storage.
 - **CrowdSec** — confirm the bouncer authed: `docker exec crowdsec cscli bouncers list`

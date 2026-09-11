@@ -51,7 +51,7 @@ Run `just init` — it creates each stack's `.env` and walks you through **every
 - Prompts for a username/password and writes `TRAEFIK_DASHBOARD_CREDENTIALS`
 - Explains each Cloudflare secret, then **confirms before opening the page in your
   browser** (and just shows the URL on a headless box), then prompts you to paste
-  `CF_DNS_API_TOKEN` and `CLOUDFLARE_TUNNEL_TOKEN` — leave empty to do them later
+  `CLOUDFLARE_DNS_TOKEN` and `CLOUDFLARE_TUNNEL_TOKEN` — leave empty to do them later
 - You can skip anything; empty answers fall back to the current/default value
 - Finishes by asking whether to set up **restic repo backups to Cloudflare R2** — answer
   `y` to be prompted for the R2 account ID, bucket, API token, and encryption password
@@ -72,14 +72,14 @@ Set each variable (see `stacks/*/.env.example`):
 | `CONFIG_DIR`                    | traefik + media-server | app config dir — derived, always the repo's `data/` dir  |
 | `ACME_EMAIL`                    | traefik        | Let's Encrypt account address (rendered into `traefik.yml`)      |
 | `ENV_PUID` / `ENV_PGID`         | media-server   | user/group owning the config dirs (init proposes the running user's ids) |
-| `CF_DNS_API_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
+| `CLOUDFLARE_DNS_TOKEN`              | traefik        | DNS-01 ACME for wildcard certs (see below)                       |
 | `TRAEFIK_DASHBOARD_CREDENTIALS` | traefik        | dashboard basic-auth blob (see below)                            |
 | `CROWDSEC_BOUNCER_API_KEY`      | traefik        | CrowdSec ↔ Traefik shared key (see below)                       |
 | `CLOUDFLARE_TUNNEL_TOKEN`       | cloudflared    | remotely-managed tunnel token                                    |
 
 ## 2. Where the secrets come from
 
-### `CF_DNS_API_TOKEN` — Cloudflare (wildcard TLS)
+### `CLOUDFLARE_DNS_TOKEN` — Cloudflare (wildcard TLS)
 
 This token *is* the entire Let's Encrypt prerequisite — DNS-01 is how Traefik proves it owns
 `*.DOMAIN`. Nothing has to be set up at Let's Encrypt itself; see
