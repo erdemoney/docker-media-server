@@ -19,9 +19,9 @@ decisions per router.
   to the **https entrypoint** (see `data/traefik/traefik.template.yml`), so it guards every
   router that terminates TLS — current and future — with no per-router labels. (The dashboard
   router additionally keeps its own `dashboardAcl` + basic-auth in front.) The LAPI key
-  is resolved with the Go template `{{ env "CROWDSEC_BOUNCER_API_KEY" }}`: Traefik renders
-  dynamic config files as Go templates and does **not** substitute shell-style `${VAR}`, which
-  would be sent to LAPI verbatim and fail authentication silently.
+  comes from `CROWDSEC_BOUNCER_API_KEY` via Traefik's Go templating (`env`, see `dynamic.yml`):
+  Traefik renders dynamic config files as Go templates and does **not** substitute shell-style
+  `${VAR}`, which would be sent to LAPI verbatim and fail authentication silently.
 
 ## Enable and verify
 
@@ -74,11 +74,13 @@ everything else in the zone stays public.
 
 Caveats and how it fits the stack:
 
-- **Do not put Access in front of Jellyfin if TV/media apps must stream.** Jellyfin's TV clients
-  (LG/Samsung, Android TV, Roku, ...) authenticate with a device **token**, not a browser, and
-  cannot complete Cloudflare Access's interactive login — they fail to connect. Same applies to
-  any non-browser client. Leave `jellyfin.<DOMAIN>` in front of Access; Jellyfin's own accounts
-  still guard it, and the web UI is unaffected. (A service token is the workaround for
+- **Do not put Access in front of Jellyfin if *external* TV/media apps must stream.** Jellyfin's
+  TV and mobile clients (LG/Samsung, Android TV, Apple TV, Roku, ...) authenticate with a device
+  **token**, not a browser, and cannot complete Cloudflare Access's interactive login — they fail
+  to connect. LAN/Tailnet clients bypass Access anyway, so this only affects access from outside
+  the house; still, a public `jellyfin.<DOMAIN>` must stay in front of Access if any external app
+  should work. Leave it unprotected rather than breaking clients — Jellyfin's own accounts still
+  guard it, and the web UI is unaffected. (A service token is the workaround for
   machine-to-machine clients that can send headers, not for the TV apps, which can't.)
 - It is an extra layer over each app's own auth (Jellyfin accounts, the Traefik dashboard's
   basic-auth) — belt-and-suspenders, not a replacement. Rejected traffic never reaches the

@@ -24,8 +24,8 @@ the Cloudflare dashboard, not in files.
 
 For a hostname to actually work, two things must line up:
 
-- The **Traefik router** already accepts the subdomain
-  (`traefik.http.routers.<svc>.rule=Host(`${SUB_DOMAIN_<SVC>}.${DOMAIN}`)` with `tls=true`),
+- The **Traefik router** already accepts the subdomain (compose label
+  `traefik.http.routers.<svc>.rule=Host(${SUB_DOMAIN_<SVC>}.${DOMAIN})`, with `tls=true`),
   and the DNS record for that hostname is proxied (orange-cloud) in the zone's DNS tab.
 - **TLS mode** is **Full (strict)** (SSL/TLS → Edge Certificates), so the edge → Traefik leg
   uses the real cert.
@@ -35,71 +35,41 @@ directly to Traefik on `:443` and is unaffected.
 
 ## Certificates (automatic)
 
-HTTPS is set up once and then handled for you. Traefik's ACME provider creates the
-`_acme-challenge` TXT record through the Cloudflare API (`CF_DNS_API_TOKEN`) and issues a
-**Let's Encrypt wildcard certificate for `*.DOMAIN`** — one cert that covers every hostname
-terminating at Traefik, whether it arrived via the tunnel, LAN, or Tailnet (all three end at
-Traefik on `:443`). Renewals are automatic. Confirm issuance in the Traefik dashboard's ACME
-panel (`https://traefik.<DOMAIN>`); no per-app TLS setup is needed because every router label
-sets `tls=true`.
+HTTPS is one-time setup, then handled for you. Traefik's ACME provider creates the
+`_acme-challenge` TXT record via the Cloudflare API (`CF_DNS_API_TOKEN`, from
+[Quickstart](quickstart)) and issues a **Let's Encrypt wildcard cert for `*.DOMAIN`** — one cert
+covering every hostname that terminates at Traefik, whether via tunnel, LAN, or Tailnet. Because
+it's the **DNS-01** challenge, certs issue before the tunnel or any app hostname exists; no
+inbound ports are required. Renewals and per-app HTTPS are automatic (`tls=true` on every router).
+Confirm issuance in the Traefik dashboard's ACME panel (`https://traefik.<DOMAIN>`).
 
-### There is no Let's Encrypt account to create
+There is **no Let's Encrypt account to create** — no signup, dashboard, or email verification.
+Traefik registers one over ACME on first start and stores it in `$CONFIG_DIR/traefik/acme.json`;
+`ACME_EMAIL` (default `admin@<DOMAIN>` in `just init`) just needs to be a real, controlled domain
+— the API rejects reserved ones (`@example.com`) — but it needn't receive mail.
 
-This trips people up: Let's Encrypt has **no signup page, no dashboard, and no email
-verification**. The account is created programmatically over ACME the first time Traefik starts —
-it generates a keypair, registers it, accepts the subscriber agreement on your behalf, and stores
-all of it in `$CONFIG_DIR/traefik/acme.json`. You never visit their website.
-
-So `ACME_EMAIL` needs no prior setup anywhere, and `just init` defaults it to
-`admin@<your domain>` — press Enter and you're done. Three things worth knowing about it:
-
-- **Traefik requires the field** (it's `Required: Yes` in Traefik's ACME reference), even though
-  Let's Encrypt treats the contact address as optional. Leave it blank and the resolver is
-  misconfigured — `just dirs` warns you.
-- **It does not have to receive mail.** Let's Encrypt
-  [ended expiration notification emails on 4 June 2025](https://letsencrypt.org/2025/06/26/expiration-notification-service-has-ended),
-  deleted the addresses it had stored, and no longer keeps ACME-supplied addresses against
-  issuance data. Renewal is automatic here anyway; if you want independent alerting use a
-  third-party monitor (they suggest Red Sift Certificates Lite, free up to 250 certs) rather
-  than expecting mail from them.
-- **But it cannot be a fake domain.** Their API validates the contact domain and rejects
-  reserved ones outright:
-
-  ```
-  400 urn:ietf:params:acme:error:invalidEmail:
-      invalid contact domain. Contact emails @example.com are forbidden
-  ```
-
-  Bare ICANN TLDs are refused for the same reason. That's why the default is `admin@` your own
-  domain — a domain you demonstrably control, so it always passes, whether or not a mailbox
-  exists behind it.
-
-### What you *do* have to set up
-
-All of it is Cloudflare-side, and all of it is already in [Quickstart](quickstart):
-
-1. The domain is on Cloudflare (an active zone) — Traefik proves ownership by writing DNS records.
-2. `CF_DNS_API_TOKEN` can edit that zone's DNS (the **Edit zone DNS** template).
-3. Nothing else. Because the wildcard forces the **DNS-01** challenge — HTTP-01 cannot issue
-   wildcards — the certificate never depends on inbound port 80/443 reachability. Certs issue
-   correctly before the tunnel or any DNS record for an app exists.
-
-### Use the staging CA while experimenting
-
-Let's Encrypt's rate limits "last up to one week and cannot be overridden", so don't iterate on a
-broken setup against production. In `data/traefik/traefik.template.yml`, point the resolver at
-staging, then `just up`:
+While experimenting, use the **staging CA** — Let's Encrypt rate limits "last up to one week and
+cannot be overridden". In `data/traefik/traefik.template.yml`:
 
 ```yaml
 caServer: https://acme-staging-v02.api.letsencrypt.org/directory
 ```
 
-Staging issues untrusted certs (browsers will warn — that's expected). When you switch back to
-production, delete the storage first so the staging account and certs aren't reused:
+then `just up`. Staging certs are untrusted (browsers warn — that's expected); switching back to
+production means dropping the account storage first so the staging account/certs aren't reused:
 
 ```bash
 just down && rm -f data/traefik/acme.json && just up   # dirs re-creates it 0600
 ```
+
+### Editing Traefik's config
+
+Traefik's static config is **rendered, not copied**: the repo tracks
+`data/traefik/traefik.template.yml`, and `just up` renders it to
+`$CONFIG_DIR/traefik/traefik.yml` (untracked) with your `ACME_EMAIL` filled in. **Edit the
+template, never the rendered file** — `just up` overwrites the output every run. `dynamic.yml`
+and `crowdsec-acquis.yaml` need no rendering and are mounted as tracked files (`dynamic.yml`
+resolves its one secret at runtime with Traefik's Go templating).
 
 ## Media through the tunnel (no CDN caching)
 

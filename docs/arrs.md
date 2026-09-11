@@ -14,9 +14,9 @@ other without the `docker compose` project name in the way:
 - `external` — the edge network where `cloudflared` and `traefik` sit (see [Ingress](ingress)).
 
 Networks are created once with `just networks` (idempotent; `just up` calls it). Nothing inside
-Docker binds an IP you need to care about — the names are what matter. Because no service sets a
-`container_name` or `hostname`, containers are reachable by their **service name**; add a new
-container and every existing app can already reach it at `http://<service>:<port>`.
+Docker binds an IP you need to care about — the names are what matter. Every service sets a
+`container_name` matching its name, so containers are reachable at `http://<service>:<port>`,
+and a newly added container is already reachable from every existing app.
 
 ## Internal DNS names and API keys
 
@@ -130,15 +130,10 @@ of `/mnt/decypharr`.
 
 ## Imports are symlinks, not hardlinks
 
-If you're coming from a traditional \*arr setup, this is the part that changes. There is no local
-download to hardlink: Decypharr hands the \*arrs a **symlink** pointing into its FUSE mount, and
-"importing" renames that link into the root folder. The payload never lands on your disk — it's
-streamed from the debrid provider at playback time.
-
-Hardlinks aren't available even in principle here: FUSE debrid mounts (DFS or rclone) don't
-implement `link()`, so you can't create a second directory entry for a remote file.
-
-Two constraints follow, and they're the ones worth remembering:
+There's no local download to hardlink here: Decypharr hands the \*arrs a **symlink** pointing into
+its FUSE mount, and importing renames that link into the root folder — the payload never lands on
+disk, it streams from the debrid provider at playback. (FUSE debrid mounts can't hardlink anyway:
+`link()` isn't implemented.) Two constraints follow:
 
 - **Keep Decypharr's download folder and the \*arr root folders on the same mount** (both under
   `/mnt/decypharr`). Same filesystem means the import is a rename of a tiny symlink — instant. If

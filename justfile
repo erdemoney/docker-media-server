@@ -833,7 +833,7 @@ backup-restore SNAPSHOT="latest":
         {{ restic_image }} restore "{{ SNAPSHOT }}" --target /
 
 # Install a systemd timer that runs 'just backup' on ON_CALENDAR (default daily).
-# Writes restic-backup.{service,timer} under /etc/systemd/system via sudo, then
+# Writes kickstarrt-restic-backup.{service,timer} under /etc/systemd/system via sudo, then
 # enables the timer. Rerun to change the schedule. systemd is assumed on Linux
 # servers; on a host without it (Alpine, a NAS scheduler, cron) this prints a
 # fallback instead of erroring, and .env.restic is required before it will run.
@@ -860,7 +860,7 @@ backup-schedule ON_CALENDAR="daily":
         "This installs a systemd timer that runs '$JUST_BIN backup' in '$REPO'" \
         "on calendar '$ON_CALENDAR'. Two files are written under /etc/systemd/system" \
         'with sudo and the timer is enabled + started:'
-    printf '  /etc/systemd/system/restic-backup.timer\n  /etc/systemd/system/restic-backup.service\n'
+    printf '  /etc/systemd/system/kickstarrt-restic-backup.timer\n  /etc/systemd/system/kickstarrt-restic-backup.service\n'
     printf 'Proceed? [y/N] '
     read -r ok || ok=""
     case "$ok" in
@@ -878,7 +878,7 @@ backup-schedule ON_CALENDAR="daily":
         'Type=oneshot' \
         "WorkingDirectory=$REPO" \
         "ExecStart=$JUST_BIN backup" \
-        | sudo tee /etc/systemd/system/restic-backup.service >/dev/null
+        | sudo tee /etc/systemd/system/kickstarrt-restic-backup.service >/dev/null
 
     printf '%s\n' \
         '[Unit]' \
@@ -887,17 +887,17 @@ backup-schedule ON_CALENDAR="daily":
         '[Timer]' \
         "OnCalendar=$ON_CALENDAR" \
         'Persistent=true' \
-        'Unit=restic-backup.service' \
+        'Unit=kickstarrt-restic-backup.service' \
         '' \
         '[Install]' \
         'WantedBy=timers.target' \
-        | sudo tee /etc/systemd/system/restic-backup.timer >/dev/null
+        | sudo tee /etc/systemd/system/kickstarrt-restic-backup.timer >/dev/null
 
     sudo systemctl daemon-reload
-    sudo systemctl enable --now restic-backup.timer
+    sudo systemctl enable --now kickstarrt-restic-backup.timer
     echo
-    echo "installed restic-backup.{service,timer} - timer enabled and active."
-    systemctl list-timers restic-backup.timer --no-pager
+    echo "installed kickstarrt-restic-backup.{service,timer} - timer enabled and active."
+    systemctl list-timers kickstarrt-restic-backup.timer --no-pager
     echo "remove it later with 'just backup-unschedule'."
 
 # Stop and remove the restic backup systemd timer + service installed by
@@ -910,11 +910,11 @@ backup-unschedule:
     command -v systemctl >/dev/null 2>&1 || { echo "no systemd - nothing to uninstall"; exit 0; }
     command -v sudo >/dev/null 2>&1 || { echo "sudo not found - run these commands as root"; exit 1; }
 
-    sudo systemctl disable --now restic-backup.timer >/dev/null 2>&1 || true
-    sudo systemctl reset-failed restic-backup.timer >/dev/null 2>&1 || true
-    sudo rm -f /etc/systemd/system/restic-backup.timer /etc/systemd/system/restic-backup.service
+    sudo systemctl disable --now kickstarrt-restic-backup.timer >/dev/null 2>&1 || true
+    sudo systemctl reset-failed kickstarrt-restic-backup.timer >/dev/null 2>&1 || true
+    sudo rm -f /etc/systemd/system/kickstarrt-restic-backup.timer /etc/systemd/system/kickstarrt-restic-backup.service
     sudo systemctl daemon-reload
-    echo "removed restic-backup.{timer,service} and stopped the timer."
+    echo "removed kickstarrt-restic-backup.{timer,service} and stopped the timer."
 
 # Prepare everything on disk that compose bind-mounts (idempotent; called by `just up`):
 # the per-service config dirs, traefik's logs dir and acme.json (0600, must be a FILE -

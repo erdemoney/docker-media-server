@@ -40,29 +40,19 @@ The update flow the repo is built around: Renovate opens a PR → merge → `git
 `just update-all` (see [Updates](updates)); `just check-updates` gives the same picture from the
 CLI.
 
-## Traefik's config is rendered, not copied
-
-Traefik cannot read env vars or templates in its **static** config, but `ACME_EMAIL` has to be
-per-deployment. So the repo tracks `data/traefik/traefik.template.yml` and `just dirs` renders it
-to `$CONFIG_DIR/traefik/traefik.yml` (untracked) with the value from `stacks/traefik/.env`:
-
-- **edit the template**, never the rendered file — `just up` overwrites the output every run;
-- `dynamic.yml` and `crowdsec-acquis.yaml` need no rendering and are mounted as tracked files
-  (`dynamic.yml` resolves its one secret with Traefik's Go templating at runtime instead).
-
 ## Backups
 
 This is a pure-debrid stack — the host holds nothing but config, so the whole backup story is
 one target: the **config directory** (everything under `$CONFIG_DIR` — `acme.json`, the Traefik
-configs, and each app's own state like the \*arr databases). Snapshot it frequently with your
-storage's native mechanism.
+configs, and each app's own state like the \*arr databases). Snapshot it frequently with whatever
+your storage offers (`zfs` on TrueNAS, a NAS app, ...; see `truenas.md`).
 
 Nothing in compose is precious — any container is one `just up` from a clean slate. The config
 directory is the only state you can't rebuild; if you snapshot exactly one thing, snapshot that.
 
 ### Offsite restic backups of the repo
 
-The native snapshots above cover that config state; the other state that can't be rebuilt from the repo's
+Those local snapshots cover the config state; the other state that can't be rebuilt from the repo's
 `main` is the **repo working tree itself** — `stacks/*/.env` hold every secret and `data/` holds
 runtime config. Back it up too, encrypted and deduplicated, with [restic](https://restic.net),
 run in a container by `just` (nothing to install). One-time setup:
@@ -116,9 +106,8 @@ container, which the recipes don't do.)
 
 Credential vars live in `.env.restic` too (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `B2_ACCOUNT_ID`, `B2_ACCOUNT_KEY`, `RCLONE_CONFIG`, ...) and are forwarded the same way.
-Snapshots take the whole working tree minus `.git`, so `.env.restic` (password included) rides
-along — encrypted like everything else. Keep `RESTIC_PASSWORD` somewhere safe separately
-anyway: without it the repository is unrecoverable.
+Snapshots take the whole working tree minus `.git`, `.env.restic` included. Keep
+`RESTIC_PASSWORD` somewhere safe separately: without it the repository is unrecoverable.
 
 Other recipes:
 
@@ -139,7 +128,7 @@ just backup-schedule              # runs daily
 just backup-schedule "*-*-* 04:30:00"   # custom calendar, re-run to change
 ```
 
-This writes `restic-backup.{service,timer}` under `/etc/systemd/system` via sudo (with a
+This writes `kickstarrt-restic-backup.{service,timer}` under `/etc/systemd/system` via sudo (with a
 confirmation prompt), resolves your actual `just` path into `ExecStart`, and enables the timer.
 On a host **without** systemd (Alpine, OpenWrt, a NAS scheduler), it prints the equivalent cron
 line and exits non-zero — or use cron directly:
@@ -148,8 +137,8 @@ line and exits non-zero — or use cron directly:
 0 4 * * * cd /srv/kickstarrt && /usr/local/bin/just backup
 ```
 
-`systemctl list-timers restic-backup.timer` shows the next run; `just backup-unschedule` removes
-the units.
+`systemctl list-timers kickstarrt-restic-backup.timer` shows the next run; `just backup-unschedule`
+removes the units.
 
 `just backup-restore` is **non-destructive**: it dry-runs first, prints exactly what would be
 restored/updated, and asks for confirmation before writing anything. Files present locally but

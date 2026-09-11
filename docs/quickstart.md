@@ -21,8 +21,8 @@ Why the networks and dirs matter is covered in [The \*arrs](arrs).
 ## Fork first
 
 This repo is meant to be **forked**. Fork it to your own GitHub account, then clone your fork —
-that gives you a personal copy to customize (domain, secrets, service list) while still being able
-to pull upstream improvements. **Make the fork `Private`** (Settings → change visibility) — it
+that gives you a personal copy to customize while still being able to pull upstream improvements.
+**Make the fork `Private`** (Settings → change visibility) — it
 deploys this stack from your fork, and a misstep that commits a secret to a public fork leaks it
 to the world:
 
@@ -36,9 +36,9 @@ git remote add upstream git@github.com:erdemoney/kickstarrt.git   # optional
 
 Run `just init` — it creates each stack's `.env` and walks you through **every** variable:
 
-- `CONFIG_DIR` is not asked: it is always the repo checkout's `data/` dir. App configs,
-  `acme.json` and Traefik's rendered config live there, which is also what the restic
-  backup covers — keeping them together is the whole point, so it isn't configurable
+- `CONFIG_DIR` isn't asked: it's automatically set to a full path to this repo's `data/` dir,
+  where app configs, `acme.json`, and Traefik's rendered config live (and what the restic
+  backup covers). It isn't user-configurable — the `just` recipes expect the repo-defined place
 - `DOMAIN` is prompted once and synced to every stack that defines it (traefik, media-server)
 - Subdomains default to the example values — Enter to keep, type to change;
   `ENV_PUID`/`ENV_PGID` instead propose the uid/gid of the user running `just` (Enter to

@@ -55,7 +55,9 @@ over the local `just check-updates` (which stays useful for a quick CLI look).
    - Fine-grained: `Contents`, `Pull requests`, `Issues` all **read and write** (read alone fails
      with `Write access to repository not granted` because Renovate pushes branches), restricted
      to this repo.
-3. Store it once: `gh secret set RENOVATE_TOKEN` (from the repo root).
+3. Store it once as a repo **Actions secret**: `gh secret set RENOVATE_TOKEN` (from the repo
+   root) — or via the web UI, no `gh` needed: GitHub → repo **Settings → Secrets and variables →
+   Actions → New repository secret**.
 
 A GitHub App install is _not_ needed — this is the self-hosted action setup.
 
@@ -86,8 +88,8 @@ PRs deserve reading the release notes first.
   (e.g. `Dependency extraction complete ... depCount`).
 - **`Write access to repository not granted`** at push time: token needs `Contents: read and
 write` (fine-grained) or `repo` (classic), allowed on this repository.
-- **Token expired/wrong**: `gh secret set RENOVATE_TOKEN` again, then re-run via
-  `workflow_dispatch`.
+- **Token expired/wrong**: re-set `RENOVATE_TOKEN` (`gh secret set` or Settings → Secrets and
+  variables → Actions), then re-run via `workflow_dispatch`.
 - **Validate config locally before pushing**:
 
   ```bash
