@@ -145,7 +145,7 @@ On a host **without** systemd (Alpine, OpenWrt, a NAS scheduler), it prints the 
 line and exits non-zero — or use cron directly:
 
 ```
-0 4 * * * cd /srv/docker-media-server && /usr/local/bin/just backup
+0 4 * * * cd /srv/kickstarrt && /usr/local/bin/just backup
 ```
 
 `systemctl list-timers restic-backup.timer` shows the next run; `just backup-unschedule` removes

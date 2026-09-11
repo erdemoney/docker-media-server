@@ -1,4 +1,4 @@
-# docker-media-server
+# kickstArrt
 
 Self-hosted media stack — Jellyfin, \*arrs, debrid gateway, Traefik, CrowdSec — orchestrated
 with Docker Compose and driven by a single repo.
@@ -41,12 +41,12 @@ Seerr handles user requests.
 ## Quick start
 
 ```bash
-git clone git@github.com:<you>/docker-media-server.git
-cd docker-media-server
+git clone git@github.com:<you>/kickstarrt.git
+cd kickstarrt
 just init
 # answers a few prompts for the secrets; remaining vars go in stacks/*/.env (see docs/quickstart.md)
 just up
 ```
 
 Requires Docker and [just](https://just.systems). Full setup guide and architecture details live
-in the [wiki](https://erdemoney.github.io/docker-media-server/).
+in the [wiki](https://erdemoney.github.io/kickstarrt/).

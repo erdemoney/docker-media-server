@@ -3,7 +3,7 @@ title: Overview
 nav_order: 1
 ---
 
-# Docker media stack
+# kickstArrt
 
 A self-hosted media stack run through Docker, with a single GitHub repo as the source of truth
 for compose files, configs that live in code, and all setup/ops documentation. The same

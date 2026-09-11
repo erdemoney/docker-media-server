@@ -1,4 +1,4 @@
-title: Media Stack
+title: kickstArrt
 description: >-
   Operations and setup wiki for a self-hosted Docker media stack
   (cloudflared, Traefik, Jellyfin, Sonarr/Radarr/Prowlarr/Bazarr/Profilarr, Decypharr).
@@ -7,4 +7,4 @@ color_scheme: light
 
 aux_links:
   "Repository":
-    - "https://github.com/erdemoney/docker-media-server"
+    - "https://github.com/erdemoney/kickstarrt"

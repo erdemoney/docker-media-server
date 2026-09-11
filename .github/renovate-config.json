@@ -13,7 +13,7 @@
     }
   ],
   "dependencyDashboard": true,
-  "dependencyDashboardTitle": "Media stack dependency dashboard",
+  "dependencyDashboardTitle": "kickstArrt dependency dashboard",
   "enabledManagers": [
     "docker-compose",
     "github-actions",
@@ -55,7 +55,7 @@
     }
   ],
   "repositories": [
-    "erdemoney/docker-media-server"
+    "erdemoney/kickstarrt"
   ],
   "separateMajorMinor": true,
   "separateMultipleMajor": true,

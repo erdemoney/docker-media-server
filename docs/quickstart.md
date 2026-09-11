@@ -6,7 +6,7 @@ nav_order: 2
 # Quickstart
 
 Bring the stack up on a fresh Docker host, from a git checkout of this repo (clone it into
-whatever directory will run the stack — e.g. `~/docker/media-server`). Edit on a dev box, commit,
+whatever directory will run the stack — e.g. `~/docker/kickstarrt`). Edit on a dev box, commit,
 and `git pull` on the server.
 
 `just` and Docker are prerequisites. Need Docker? Follow the official
@@ -27,9 +27,9 @@ deploys this stack from your fork, and a misstep that commits a secret to a publ
 to the world:
 
 ```bash
-git clone git@github.com:<you>/docker-media-server.git ~/docker/media-server
-cd ~/docker/media-server
-git remote add upstream git@github.com:erdemoney/docker-media-server.git   # optional
+git clone git@github.com:<you>/kickstarrt.git ~/docker/kickstarrt
+cd ~/docker/kickstarrt
+git remote add upstream git@github.com:erdemoney/kickstarrt.git   # optional
 ```
 
 ## 1. Copy and fill the env files
