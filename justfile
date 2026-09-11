@@ -955,7 +955,7 @@ dirs CONFIG_DIR="" PUID="auto" PGID="auto":
     chmod 600 "$CONFIG_DIR/traefik/acme.json" 2>/dev/null || true
 
     # traefik's static config cannot read env vars, so render it here.
-    TPL="{{ justfile_directory() }}/data/traefik/traefik.yml.template"
+    TPL="{{ justfile_directory() }}/data/traefik/traefik.template.yml"
     if [ -f "$TPL" ]; then
         ACME_EMAIL=$(sed -n 's|^ACME_EMAIL=\(.*\)|\1|p' stacks/traefik/.env 2>/dev/null | tail -n1 || true)
         ACME_EMAIL="${ACME_EMAIL:-}"

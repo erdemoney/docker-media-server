@@ -87,7 +87,7 @@ All of it is Cloudflare-side, and all of it is already in [Quickstart](quickstar
 ### Use the staging CA while experimenting
 
 Let's Encrypt's rate limits "last up to one week and cannot be overridden", so don't iterate on a
-broken setup against production. In `data/traefik/traefik.yml.template`, point the resolver at
+broken setup against production. In `data/traefik/traefik.template.yml`, point the resolver at
 staging, then `just up`:
 
 ```yaml

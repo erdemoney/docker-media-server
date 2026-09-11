@@ -39,7 +39,7 @@ services:
       - "traefik.http.routers.jellyfin.rule=Host(`${SUB_DOMAIN_JELLYFIN}.${DOMAIN}`)"
       - "traefik.http.routers.jellyfin.tls=true"
       # no per-router crowdsec label: the https entrypoint applies crowdsec@file to
-      # every router (see traefik.yml.template) - attaching it here too would run it twice
+      # every router (see traefik.template.yml) - attaching it here too would run it twice
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8096/health"]

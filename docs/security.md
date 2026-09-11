@@ -16,7 +16,7 @@ decisions per router.
   `$CONFIG_DIR/traefik/crowdsec-acquis.yaml` (tracked in the repo at `data/traefik/`).
 - Traefik plugin `bouncer` — the **`crowdsec@file`** middleware defined in
   `$CONFIG_DIR/traefik/dynamic.yml` (tracked at `data/traefik/`), in stream mode. It is attached
-  to the **https entrypoint** (see `data/traefik/traefik.yml.template`), so it guards every
+  to the **https entrypoint** (see `data/traefik/traefik.template.yml`), so it guards every
   router that terminates TLS — current and future — with no per-router labels. (The dashboard
   router additionally keeps its own `dashboardAcl` + basic-auth in front.) The LAPI key
   is resolved with the Go template `{{ env "CROWDSEC_BOUNCER_API_KEY" }}`: Traefik renders

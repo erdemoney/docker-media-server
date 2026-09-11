@@ -43,7 +43,7 @@ CLI.
 ## Traefik's config is rendered, not copied
 
 Traefik cannot read env vars or templates in its **static** config, but `ACME_EMAIL` has to be
-per-deployment. So the repo tracks `data/traefik/traefik.yml.template` and `just dirs` renders it
+per-deployment. So the repo tracks `data/traefik/traefik.template.yml` and `just dirs` renders it
 to `$CONFIG_DIR/traefik/traefik.yml` (untracked) with the value from `stacks/traefik/.env`:
 
 - **edit the template**, never the rendered file — `just up` overwrites the output every run;
