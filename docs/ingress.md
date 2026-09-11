@@ -111,8 +111,16 @@ resolver supports it:
   (`jellyfin.<DOMAIN> → 192.168.1.50`, `traefik.<DOMAIN> → 192.168.1.50`, ...).
 
 **Fallback: a hosts-file entry** on the machine you're testing from (no router access needed;
-affects only that machine — all the OSes do this the same way, just different paths). Point every
-subdomain that exists in `stacks/media-server/.env` at the server, e.g.:
+affects only that machine — all the OSes do this the same way, just different paths). `just hosts`
+prints a ready-to-paste block for the exact subdomains in your `.env` files, mapped to the
+server's primary LAN IP (hand it an address to generate for another machine:
+`just hosts 10.0.0.5`):
+
+```bash
+just hosts
+```
+
+which prints something like (exact subdomains from your `.env`):
 
 ```
 192.168.1.50   traefik.<DOMAIN> jellyfin.<DOMAIN> sonarr.<DOMAIN> radarr.<DOMAIN>

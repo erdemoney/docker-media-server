@@ -707,6 +707,56 @@ wiring CONFIG_DIR="":
     echo
     echo "done. Paste URL + key pairs from the sections above; test each connection in the UI."
 
+# Print a ready-to-paste hosts-file block for testing the stack before the tunnel
+# (docs/ingress.md "Test before the tunnel"). Reads DOMAIN and every SUB_DOMAIN_* from
+# the stack .env files and maps them all to the server's primary LAN IP (the "src"
+# on its default route; hostname -I as a fallback). Override the address positionally
+# to generate for another machine: just hosts 10.0.0.5. Read-only — copy the block
+# into /etc/hosts (macOS/Linux) or C:\Windows\System32\drivers\etc\hosts (Windows).
+hosts IP="auto":
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    DOMAIN=$(sed -n 's|^DOMAIN=\(.*\)|\1|p' stacks/media-server/.env | tail -n1)
+    if [ -z "$DOMAIN" ]; then
+        echo "no DOMAIN found in stacks/media-server/.env - run 'just init' first" >&2
+        exit 1
+    fi
+
+    SUBS=$(
+        for f in stacks/media-server/.env stacks/traefik/.env; do
+            [ -f "$f" ] && sed -n 's|^SUB_DOMAIN_[A-Z0-9_]*=\([^[:space:]]*\).*|\1|p' "$f"
+        done | sort -u | grep -v '^$' || true
+    )
+    if [ -z "$SUBS" ]; then
+        echo "no SUB_DOMAIN_* values found - run 'just init' first" >&2
+        exit 1
+    fi
+
+    if [ "{{ IP }}" = "auto" ]; then
+        IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1; i<=NF; i++) if ($i=="src") {print $(i+1); exit}}' || true)
+        if [ -z "$IP" ]; then
+            IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+        fi
+    else
+        IP="{{ IP }}"
+    fi
+    if [ -z "$IP" ]; then
+        echo "could not detect the server's LAN IP - pass it positionally: just hosts <IP>" >&2
+        exit 1
+    fi
+
+    HOSTS="$IP"
+    while IFS= read -r sub; do
+        HOSTS="$HOSTS $sub.$DOMAIN"
+    done <<< "$SUBS"
+
+    echo "# kickstArrt hostnames block (docs/ingress.md 'Test before the tunnel')"
+    echo "# edit: /etc/hosts (macOS/Linux, admin) | C:\\Windows\\System32\\drivers\\etc\\hosts (Windows)"
+    echo "$HOSTS"
+    echo "# flush: macOS  sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder"
+    echo "#         Windows ipconfig /flushdns | Linux systemctl restart systemd-resolved"
+
 # Encrypted, deduplicated repo backups with restic, run in a container (nothing to
 # install). Documented backend is Cloudflare R2 (see how-to in the wiki); `.env.restic`
 # is configured by `just init` (R2_ACCOUNT_ID / R2_BUCKET / AWS creds -> RESTIC_REPOSITORY
