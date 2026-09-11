@@ -148,3 +148,12 @@ disk, it streams from the debrid provider at playback. (FUSE debrid mounts can't
   library is an absolute path into the mount, so `sonarr`, `radarr`, `bazarr`, and `jellyfin` all
   bind `/mnt/decypharr` at the identical path (see [Decypharr](decypharr)). Change it in one place
   and that app sees a library full of dangling links.
+
+## Managing from your phone
+
+**Ruddarr** ([ruddarr.com](https://ruddarr.com)) is a free, open-source **iOS companion app** for
+Radarr and Sonarr — browse the library and calendar, kick off searches, and act on the queue or
+history. It's a *client*, not a service: nothing runs on the server. Point it at each instance's
+**Application URL** — those admin panels are LAN/VPN-only anyway (see
+[Keep the public surface minimal](ingress#adding-a-public-hostname-gui)), and Ruddarr connects
+over the same LAN/VPN route, handling HTTPS and reverse-proxy headers if you ever front it publicly.
