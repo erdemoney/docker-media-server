@@ -147,8 +147,8 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
 > **The stack is LAN-only until you add tunnel hostnames — use that window.** Nothing here is
 > public yet and nothing becomes public until you expose it in [Ingress](ingress), and that's
 > intentional: an app that's live on the internet *before* its setup is done is an app with no
-> login, claimable by anyone. Finish this walkthrough (admin accounts, app auth) from a LAN
-> client, then expose apps as the **last** step — see the
+> login, claimable by anyone. Do all setup through [Set up the apps over
+> LAN](ingress#set-up-the-apps-over-lan), then expose apps as the **last** step — see the
 > [security gate](ingress#security-gate--finish-setup-before-going-public) in Ingress.
 
 ## 4. What to check right after boot

@@ -12,16 +12,16 @@ transparent pipe.
 ## Security gate: finish setup before going public
 
 Adding a tunnel hostname opens that app to the whole internet **instantly** — and until its
-first-run wizard is done the app has **no login**, so a stranger who finds the subdomain can
-create the admin account or reconfigure the app for you. Sequence it deliberately:
+first-run setup is done the app has **no login**, so anyone who finds the subdomain can create
+the admin account or reconfigure the app for you. Because of that the order is fixed:
 
-1. `just up`, then set up **every** app from a LAN client **before** adding any hostname — the
-   stack publishes nothing publicly until you do, so [**test before the tunnel**](#test-before-the-tunnel)
-   and walk through the app setup calmly. Same URL, same cert the internet will get.
-2. Minimum before exposing each app: its **admin account exists and auth is on** — Jellyfin
-   (admin created on first login), Sonarr/Radarr/Prowlarr/Bazarr/Profilarr (Settings → General →
-   Authentication), Seerr (admin on first login), Decypharr (wizard completed).
-3. **Only then** add public hostnames below.
+1. **Set up every app over LAN first** — [Set up the apps over LAN](#set-up-the-apps-over-lan)
+   gives you working URLs with no exposure, and it's where the full
+   [The \*arrs](arrs) walkthrough happens.
+2. **Minimum before exposing each app: its setup is finished** — admin account exists and auth is
+   on: Jellyfin (admin created on first login), Sonarr/Radarr/Prowlarr/Bazarr/Profilarr (Settings →
+   General → Authentication), Seerr (admin on first login), Decypharr (wizard completed).
+3. **Only then expose it** — add the public hostnames below.
 
 ## Adding a public hostname (GUI)
 
@@ -85,14 +85,18 @@ template, never the rendered file** — `just up` overwrites the output every ru
 and `crowdsec-acquis.yaml` need no rendering and are mounted as tracked files (`dynamic.yml`
 resolves its one secret at runtime with Traefik's Go templating).
 
-## Test before the tunnel
+## Set up the apps over LAN
 
-The wildcard cert issues before the tunnel exists (DNS-01 needs no inbound ports), and LAN/Tailnet
-traffic already reaches Traefik `:443` directly — so the *only* thing standing between you and a
-testable stack is that `jellyfin.<DOMAIN>` & co. resolve to the server's LAN IP on whatever client
-you test from. Traefik routes purely by exact hostname, so once a request lands with the right
-`Host:` header the whole pipeline (routing → TLS → app) is the real deal — same cert a visitor
-will get, browser-trustable and all. No Cloudflare public setup involved yet.
+Do this **stage** before adding any public hostname and before wiring the \*arrs together: from a
+LAN client the stack behaves exactly as it will over the internet — same `Host()` routing, same
+wildcard cert, browser-trustable — but nothing is reachable from outside. **This is where all
+first-run setup happens** (admin accounts, auth, API keys, interconnections), not after you're
+public.
+
+Reaching Traefik `:443` from a LAN client already works (cert issuance was DNS-01, no inbound
+ports; LAN/Tailnet traffic hits Traefik directly). The only thing standing between you and usable
+URLs is hostname resolution: `jellyfin.<DOMAIN>` & co. must resolve to the server's LAN IP on the
+machine you're setting up from.
 
 **Recommended: a local DNS record.** One rule covers the whole LAN, permanently — it doubles as
 split-horizon DNS so LAN clients resolve to the server instead of hairpinning out through the
@@ -107,10 +111,10 @@ resolver supports it:
   ```
   local-data: "*.<DOMAIN> A 192.168.1.50"
   ```
-- **Router UI**: a regular A record per hostname for the ones you want to test
+- **Router UI**: a regular A record per hostname for the ones you want to reach
   (`jellyfin.<DOMAIN> → 192.168.1.50`, `traefik.<DOMAIN> → 192.168.1.50`, ...).
 
-**Fallback: a hosts-file entry** on the machine you're testing from (no router access needed;
+**Fallback: a hosts-file entry** on the machine you're setting up from (no router access needed;
 affects only that machine — all the OSes do this the same way, just different paths). `just hosts`
 prints a ready-to-paste block for the exact subdomains in your `.env` files, mapped to the
 server's primary LAN IP (hand it an address to generate for another machine:
@@ -155,10 +159,13 @@ echo | openssl s_client -connect 192.168.1.50:443 -servername jellyfin.<DOMAIN> 
   | openssl x509 -noout -text | grep -A1 "Subject Alternative Name"   # expect *.<DOMAIN>
 ```
 
-Got a working URL? Skip the waiting: `just wiring` prints every internal URL and API key the apps
-need. Once the tunnel hostnames are added (above), decide whether local DNS stays — keeping it is
-safe and recommended; `just backup`/cron traffic, LAN access, and Traefik's dashboard then never
-depend on the tunnel being up.
+From a LAN client that URL **is** the real stack — run `just wiring` (it prints every internal URL
+and API key) and work through [The \*arrs](arrs) for the full walkthrough: admin accounts, auth,
+API keys, interconnections — all of it happens here, while nothing is public.
+
+Keep the local DNS rule afterwards — it's permanent split-horizon DNS, and `just backup`/cron
+traffic, LAN access, and Traefik's dashboard then never depend on the tunnel being up. When every
+app is set up and secured, expose it in [Adding a public hostname](#adding-a-public-hostname-gui).
 
 ## Media through the tunnel (no CDN caching)
 
