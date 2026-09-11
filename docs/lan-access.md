@@ -11,7 +11,7 @@ over the internet (same `Host()` routing, same wildcard cert, browser-trustable)
 reachable from outside.
 
 Reaching Traefik `:443` from a LAN client already works (cert issuance is DNS-01 — no inbound
-ports — and LAN/Tailnet traffic hits Traefik directly). The only thing standing between you and
+ports — and LAN/VPN traffic hits Traefik directly). The only thing standing between you and
 usable URLs is hostname resolution: `jellyfin.<DOMAIN>` & co. must resolve to the server's LAN IP
 on the machine you're setting up from.
 

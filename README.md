@@ -37,7 +37,7 @@ on one Docker host, and the same checkout deploys to a dedicated box, a VM, or a
                 │
      ┌──────────┴──────────┐
      ▼                     ▼
-LAN / Tailnet       Docker "internal" network
+LAN / VPN       Docker "internal" network
 (→ Traefik :443)   ┌─────────────────────────┐
                    │ jellyfin     seerr      │
                    │ radarr       sonarr     │
@@ -70,7 +70,7 @@ library → Jellyfin streams to any client. Zero local storage, immediately play
 - **Nothing stored locally** — imports are symlinks into the debrid mount: instant, near-zero
   disk usage
 - **Automatic TLS** — Traefik issues a `*.DOMAIN` Let's Encrypt wildcard via Cloudflare DNS-01;
-  every app UI ships on HTTPS over the internet and on LAN/Tailnet alike
+  every app UI ships on HTTPS over the internet and on LAN/VPN alike
 - **Edge security** — CrowdSec WAF inside Traefik, Cloudflare tunnel for ingress, and optional
   Cloudflare Access identity fronting per-hostname
 - **Automated upkeep** — Renovate opens dependency PRs and CI validates every change (compose +

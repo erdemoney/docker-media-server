@@ -38,8 +38,8 @@ the Cloudflare dashboard, not in files.
 **Keep the public surface minimal.** The only hostnames users actually need are
 `seerr.<DOMAIN>` (so they can request) and `jellyfin.<DOMAIN>` (so they can watch). Everything else
 — Radarr, Sonarr, Prowlarr, Bazarr, Profilarr, Decypharr, the Traefik dashboard — is an admin
-panel: reach it over LAN/Tailnet ([LAN access](lan-access)) and leave it out of the public
-hostnames. If you need to administer from elsewhere, get in over a **VPN/Tailnet** to the server
+panel: reach it over LAN/VPN ([LAN access](lan-access)) and leave it out of the public
+hostnames. If you need to administer from elsewhere, get in over a **VPN** to the server
 rather than publishing a panel — and if you do expose any panel, put
 [Cloudflare Access](#authentication-with-cloudflare-access) in front of it.
 
@@ -51,7 +51,7 @@ For a hostname to actually work, two things must line up:
 - **TLS mode** is **Full (strict)** (SSL/TLS → Edge Certificates), so the edge → Traefik leg
   uses the real cert.
 
-Removing a hostname from Public Hostnames removes it from the internet; LAN/Tailnet access goes
+Removing a hostname from Public Hostnames removes it from the internet; LAN/VPN access goes
 directly to Traefik on `:443` and is unaffected.
 
 ## Certificates (automatic)
@@ -59,7 +59,7 @@ directly to Traefik on `:443` and is unaffected.
 HTTPS is one-time setup, then handled for you. Traefik's ACME provider creates the
 `_acme-challenge` TXT record via the Cloudflare API (`CLOUDFLARE_DNS_TOKEN`, from
 [Quickstart](quickstart)) and issues a **Let's Encrypt wildcard cert for `*.DOMAIN`** — one cert
-covering every hostname that terminates at Traefik, whether via tunnel, LAN, or Tailnet. Because
+covering every hostname that terminates at Traefik, whether via tunnel, LAN, or VPN. Because
 it's the **DNS-01** challenge, certs issue before the tunnel or any app hostname exists; no
 inbound ports are required. Renewals and per-app HTTPS are automatic (`tls=true` on every router).
 Confirm issuance in the Traefik dashboard's ACME panel (`https://traefik.<DOMAIN>`).
@@ -122,7 +122,7 @@ sees the cloudflared container, so a Traefik-side geoblock would be unreliable w
 2. Field **Country**, operator **is not**, value **United States**; action **Block**.
 3. Save — blocks every public hostname on the zone from outside the US.
 
-Notes: country comes from the edge IP (VPNs bypass it); LAN/Tailnet traffic never traverses
+Notes: country comes from the edge IP (VPNs bypass it); LAN/VPN traffic never traverses
 Cloudflare, so this does not affect internal access. (This same pattern is also where you'd
 enforce any other zone-wide WAF rules.)
 
@@ -143,7 +143,7 @@ Caveats and how it fits the stack:
 - **Do not put Access in front of Jellyfin if *external* TV/media apps must stream.** Jellyfin's
   TV and mobile clients (LG/Samsung, Android TV, Apple TV, Roku, ...) authenticate with a device
   **token**, not a browser, and cannot complete Cloudflare Access's interactive login — they fail
-  to connect. LAN/Tailnet clients bypass Access anyway, so this only affects access from outside
+  to connect. LAN/VPN clients bypass Access anyway, so this only affects access from outside
   the house; still, a public `jellyfin.<DOMAIN>` must stay in front of Access if any external app
   should work. Leave it unprotected rather than breaking clients — Jellyfin's own accounts still
   guard it, and the web UI is unaffected. (A service token is the workaround for
@@ -155,7 +155,7 @@ Caveats and how it fits the stack:
   edge while CrowdSec still blocks scanner IPs inside Traefik. Enable both; neither interferes
   with the other's bypasses (LAN/VPN users pass Access too if the `traefik.<DOMAIN>` dashboard
   and media sit behind it).
-- LAN/Tailnet access goes straight to Traefik and never traverses the edge, so Access only
+- LAN/VPN access goes straight to Traefik and never traverses the edge, so Access only
   applies to the public hostnames — same as the [geolock](#geolock-optional-eg-usa-only) above.
 
 ## Traefik dashboard

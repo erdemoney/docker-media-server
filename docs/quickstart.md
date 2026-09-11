@@ -158,7 +158,7 @@ App UIs live at `https://<subdomain>.<DOMAIN>`: `jellyfin`, `seerr`, `radarr`, `
 - CrowdSec seeded its config under `$CONFIG_DIR/crowdsec/config` — see [Security](security).
 - Jellyfin's admin account is created on first login (feed its key to Seerr later).
 
-Reach the stack first — [LAN access](lan-access) resolves every app's URL on a LAN/Tailnet client
+Reach the stack first — [LAN access](lan-access) resolves every app's URL on a LAN/VPN client
 and verifies the cert — then run `just wiring` on the server (it probes the internal network and
 prints every URL + API key you need to paste) and continue to [The \*arrs](arrs) for the full
 walkthrough. All first-run setup happens over LAN, before anything is public.

@@ -24,7 +24,7 @@ host-agnostic.
                ------------+------------
                |                         |
                v                         v
-        LAN / Tailnet              Docker "internal" network
+        LAN / VPN              Docker "internal" network
         (direct to Traefik)        +------------------------+
                                    | jellyfin    seerr      |
                                    | radarr      sonarr     |
@@ -40,7 +40,7 @@ the library on the debrid mount → Jellyfin streams to clients; Seerr handles r
 **HTTPS comes out of the box.** Traefik's ACME provider creates the DNS-01 challenge through
 Cloudflare (`CLOUDFLARE_DNS_TOKEN`) and issues a **Let's Encrypt wildcard certificate for
 `*.DOMAIN`**, automatically renewed — so every service's UI is served over TLS, whether it's
-reached from the public internet, LAN, or Tailnet. No per-app TLS configuration is involved.
+reached from the public internet, LAN, or VPN. No per-app TLS configuration is involved.
 
 ## Hardware
 
