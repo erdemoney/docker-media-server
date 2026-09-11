@@ -9,7 +9,10 @@ Bring the stack up on a fresh Docker host, from a git checkout of this repo (clo
 whatever directory will run the stack — e.g. `~/docker/media-server`). Edit on a dev box, commit,
 and `git pull` on the server.
 
-`just` and Docker are prerequisites. `just up` handles the ordering for you — it creates the
+`just` and Docker are prerequisites. Need Docker? Follow the official
+[Docker Engine install guide](https://docs.docker.com/engine/install/) for your distro — it
+covers the `docker compose` plugin and adding your user to the `docker` group too. `just up`
+handles the ordering for you — it creates the
 shared networks and the per-service config dirs (both idempotent), then brings every stack up.
 Why the networks and dirs matter is covered in [The \*arrs](arrs).
 
