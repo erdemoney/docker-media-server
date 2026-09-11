@@ -11,7 +11,9 @@ and `git pull` on the server.
 
 `just` and Docker are prerequisites. Need Docker? Follow the official
 [Docker Engine install guide](https://docs.docker.com/engine/install/) for your distro — it
-covers the `docker compose` plugin and adding your user to the `docker` group too. `just up`
+covers the `docker compose` plugin too — then the
+[post-installation steps](https://docs.docker.com/engine/install/linux-postinstall/) to run
+`docker` as a non-root user (`usermod -aG docker` and a re-login). `just up`
 handles the ordering for you — it creates the
 shared networks and the per-service config dirs (both idempotent), then brings every stack up.
 Why the networks and dirs matter is covered in [The \*arrs](arrs).
