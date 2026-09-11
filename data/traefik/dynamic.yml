@@ -1,0 +1,56 @@
+http:
+  middlewares:
+    dashboardAcl:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/16"
+          - "172.16.0.0/12"
+          - "10.0.0.0/8"
+          - "100.64.0.0/10"
+
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 50
+
+    secHeaders:
+      headers:
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer"
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        permissionsPolicy: "camera=(), microphone=(), geolocation=()"
+        customRequestHeaders:
+          X-Robots-Tag: "noindex, nofollow"
+
+    crowdsec:
+      plugin:
+        bouncer:
+          enabled: true
+          logLevel: INFO
+          crowdsecMode: stream
+          updateMaxFailure: -1
+          # false = fail-open at startup too: with crowdsec@file on the whole https
+          # entrypoint, `true` would stall ALL external traffic whenever Traefik
+          # (re)starts while CrowdSec is down. The cost: banned IPs slip through for
+          # the seconds until the first stream sync completes - acceptable here.
+          streamStartupBlock: false
+          crowdsecLapiScheme: http
+          crowdsecLapiHost: crowdsec:8080
+          # Go template - Traefik renders dynamic config files through text/template.
+          # Shell-style ${VAR} is NOT substituted here and would be sent to LAPI verbatim.
+          crowdsecLapiKey: '{{ env "CROWDSEC_BOUNCER_API_KEY" }}'
+          forwardedHeadersTrustedIPs:
+            - 127.0.0.1/8
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+          clientTrustedIPs:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10

@@ -1,0 +1,66 @@
+# Template for Traefik's STATIC config. `just dirs` renders this to
+# data/traefik/traefik.yml (untracked) with ${ACME_EMAIL} from stacks/traefik/.env.
+# Traefik does not support templating or env vars in its static config, so the
+# substitution has to happen before the container starts. Edit this file, not the
+# rendered one - `just up` overwrites the output on every run.
+
+api:
+  dashboard: true
+  insecure: false
+
+experimental:
+  plugins:
+    bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      version: v1.4.5
+
+ping: {}
+
+entryPoints:
+  http:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+          permanent: true
+  https:
+    address: ":443"
+    http:
+      middlewares:
+        # crowdsec first: reject banned IPs before spending rate-limit tokens or
+        # adding headers to requests we're about to deny anyway.
+        - crowdsec@file
+        - secHeaders@file
+        - rateLimit@file
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: "internal"
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: ${ACME_EMAIL}
+      storage: acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"
+
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
