@@ -78,9 +78,6 @@ it for the documented backend, **Cloudflare R2** — zero egress, no minimums, s
 the rest of this stack. (Backblaze B2 is cheaper raw storage; every backend works, but you're
 on your own if you deviate — see below.)
 
-On an older checkout the file was named `.env.backup`; `git mv .env.backup .env.restic` carries
-a configured repo over.
-
 #### Cloudflare R2 (the documented path)
 
 1. `dash.cloudflare.com` → **R2** → **Create bucket** (e.g. `media-server-restic`; location
