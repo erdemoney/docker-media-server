@@ -267,7 +267,7 @@ init:
     else
         printf '%s\n' \
     '  Needs a Cloudflare Tunnel token for WAN ingress.' \
-    '    1. The link opens your account's Networks -> Tunnels page (deep link).' \
+    '    1. The link opens the Networks -> Tunnels page for your account (deep link).' \
     '    2. Create a tunnel (Type: Cloudflared) and copy its token.' \
     '    3. Paste it below (hidden). Leave empty to skip; set it later.'
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/tunnels"
