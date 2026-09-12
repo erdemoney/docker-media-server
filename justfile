@@ -223,8 +223,8 @@ init:
     else
         printf '%s\n' \
     '  Needs a Cloudflare API token for DNS-01 wildcard certs.' \
-    '    1. dash.cloudflare.com -> My Profile -> API Tokens -> Create Token' \
-    '    2. Use the "Edit zone DNS" template for your domain.' \
+    '    1. dash.cloudflare.com -> My Profile -> API Tokens -> Create Token -> Create Custom Token' \
+    '    2. Add permissions Zone -> Read and Zone -> DNS -> Edit, scoped to your DOMAIN' \
     '    3. Paste it below (hidden). Leave empty to skip; set it later.'
         show_or_open_url "https://dash.cloudflare.com/profile/api-tokens"
         printf '  CLOUDFLARE_DNS_TOKEN (hidden): '
