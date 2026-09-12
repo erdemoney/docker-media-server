@@ -72,8 +72,11 @@ on your own if you deviate — see below.)
 
 1. `dash.cloudflare.com` → **R2** → **Create bucket** (e.g. `media-server-restic`; location
    Automatic).
-2. **R2** → **Manage R2 API Tokens** → **Create API token** → **Admin read & write**. Save the
-   **Access Key ID** and **Secret Access Key**, and note your **Account ID** (top of the R2 page).
+2. **R2** → [**Manage R2 API Tokens**](https://dash.cloudflare.com/?to=/:account/r2/api-tokens)
+   → **Create API token** → type **User API Token**, permission **Object → Read & Write**
+   (Admin is more than restic needs; read-only breaks `just backup-prune`). Save the **Access
+   Key ID** and **Secret Access Key**, and note your **Account ID** (R2 page, scroll down:
+   **Usage → Account Details**).
 3. Run `just init` and answer **yes** to "Configure R2 restic backups now?" — it prompts for the
    Account ID, bucket, and token, then writes `.env.restic`:
 

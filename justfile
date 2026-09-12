@@ -68,12 +68,12 @@ init:
     }
 
     show_or_open_url() {   # GUI: confirm first, then open. No GUI: print URL.
-        local url="$1" yn
+        local url="$1" label="${2:-the page}" yn
         if ! is_gui; then
             echo "  -> open in a browser: $url"
             return 0
         fi
-        printf '  Open the page in your browser? [Y/n] '
+        printf '  Open %s in your browser? [Y/n] ' "$label"
         read -r yn || yn=""
         printf '\n'
         case "$yn" in
@@ -310,10 +310,13 @@ init:
         printf '%s\n' \
     '  Back up this repo (all .env files + data/) to an encrypted restic repository in' \
     '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container; the' \
-    '  values below come from dash.cloudflare.com -> R2 (Create bucket, then Manage R2' \
-    '  API Tokens). Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
+    '  values below come from R2 -> Manage R2 API Tokens -> Create API token: type' \
+    '  User API Token, permission Object -> Read & Write (Admin is more than restic' \
+    '  needs; read-only breaks prune). Want a different backend? Edit RESTIC_REPOSITORY' \
+    '  + creds in' \
     "  .env.restic - that's the only supported deviation."
-        show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/overview"
+        show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/overview" "the R2 overview"
+        show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/api-tokens" "the R2 API tokens page"
         printf '  Configure R2 restic backups now? [y/N] '
         read -r yes_backup || yes_backup=""
         case "$yes_backup" in
