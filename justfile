@@ -223,9 +223,18 @@ init:
     else
         printf '%s\n' \
     '  Needs a Cloudflare API token for DNS-01 wildcard certs.' \
-    '    1. dash.cloudflare.com -> My Profile -> API Tokens -> Create Token -> Create Custom Token' \
-    '    2. Add permissions Zone -> Read and Zone -> DNS -> Edit, scoped to your DOMAIN' \
-    '    3. Paste it below (hidden). Leave empty to skip; set it later.'
+    '  Create it (dash.cloudflare.com -> My Profile -> API Tokens ->' \
+    '    Create Custom Token), mirroring the dashboard values:' \
+    '    Permissions:' \
+    '      Zone -> Zone -> Read' \
+    '      Zone -> DNS -> Edit' \
+    '    Zone Resources:' \
+    '      Include -> Specific zone -> <DOMAIN>' \
+    '    Client IP Address Filtering:' \
+    '      skip - your ISP can change your public IP and break renewals' \
+    '      (see docs/quickstart.md)' \
+    '    TTL: optional' \
+    '  Paste it below (hidden). Leave empty to skip; set it later.'
         show_or_open_url "https://dash.cloudflare.com/profile/api-tokens"
         printf '  CLOUDFLARE_DNS_TOKEN (hidden): '
         read -rs token || token=""
