@@ -267,10 +267,10 @@ init:
     else
         printf '%s\n' \
     '  Needs a Cloudflare Tunnel token for WAN ingress.' \
-    '    1. The link opens the Zero Trust home for your account (it redirects).' \
-    '    2. Sidebar: Networks -> Connectors -> create a connector (Type: Cloudflared).' \
-    '    3. Copy its token and paste it below (hidden). Leave empty to skip; set it later.'
-        show_or_open_url "https://one.dash.cloudflare.com"
+    '    1. The link opens your account's Networks -> Tunnels page (deep link).' \
+    '    2. Create a tunnel (Type: Cloudflared) and copy its token.' \
+    '    3. Paste it below (hidden). Leave empty to skip; set it later.'
+        show_or_open_url "https://dash.cloudflare.com/?to=/:account/tunnels"
         printf '  CLOUDFLARE_TUNNEL_TOKEN (hidden): '
         read -rs token || token=""
         printf '\n'

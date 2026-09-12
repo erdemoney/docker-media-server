@@ -27,8 +27,8 @@ the admin account or reconfigure the app for you. Because of that the order is f
 This cloudflared tunnel is **remotely-managed (token-only)** — public hostnames are configured in
 the Cloudflare dashboard, not in files.
 
-1. [Zero Trust dashboard](https://one.dash.cloudflare.com) → **Networks → Tunnels** → open this
-   server's tunnel.
+1. [Networks → Tunnels](https://dash.cloudflare.com/?to=/:account/tunnels) → open this server's
+   tunnel.
 2. **Public Hostname** tab → **Add a public hostname**.
 3. **Subdomain** (e.g. `jellyfin`) and **Domain** (`DOMAIN`) — this is the public URL.
 4. **Type: HTTPS**, **URL: `traefik:443`** — the tunnel container and Traefik are both on the
