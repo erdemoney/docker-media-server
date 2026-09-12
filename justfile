@@ -313,6 +313,7 @@ init:
     '  values below come from dash.cloudflare.com -> R2 (Create bucket, then Manage R2' \
     '  API Tokens). Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
     "  .env.restic - that's the only supported deviation."
+        show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/overview"
         printf '  Configure R2 restic backups now? [y/N] '
         read -r yes_backup || yes_backup=""
         case "$yes_backup" in
