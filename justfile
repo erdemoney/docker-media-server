@@ -309,11 +309,20 @@ init:
     else
         printf '%s\n' \
     '  Back up this repo (all .env files + data/) to an encrypted restic repository in' \
-    '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container; the' \
-    '  values below come from R2 -> Manage R2 API Tokens -> Create API token: type' \
-    '  User API Token, permission Object -> Read & Write (Admin is more than restic' \
-    '  needs; read-only breaks prune). Want a different backend? Edit RESTIC_REPOSITORY' \
-    '  + creds in' \
+    '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container.' \
+    '  Create the token at R2 -> Manage R2 API Tokens -> Create API token,' \
+    '  mirroring the dashboard values:' \
+    '    Token name:' \
+    '      anything (e.g. kickstarrt-restic)' \
+    '    Permissions:' \
+    '      Object -> Read & Write' \
+    '    Specify bucket(s):' \
+    '      Apply to specific buckets only -> <BUCKET>' \
+    '    TTL: optional' \
+    '    Client IP Address Filtering:' \
+    '      skip - your ISP can change your public IP and break backups' \
+    '      (see docs/maintenance.md)' \
+    '  Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
     "  .env.restic - that's the only supported deviation."
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/overview" "the R2 overview"
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/api-tokens" "the R2 API tokens page"
