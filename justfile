@@ -322,7 +322,7 @@ init:
             if [ -n "$cur_act" ]; then
                 printf '  R2 Account ID [%s, Enter to keep] > ' "$cur_act"
             else
-                printf '  R2 Account ID (R2 dashboard, top of page) > '
+                printf '  R2 Account ID (R2 page, scroll down: Usage -> Account Details) > '
             fi
             read -r acct || acct=""
             [ -n "$acct" ] && set_var "$BACKUP_ENV" R2_ACCOUNT_ID "$acct"
