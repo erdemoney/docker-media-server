@@ -218,8 +218,10 @@ init:
     echo
 
     echo "CLOUDFLARE_DNS_TOKEN"
+    dns_domain="$(get_var "$TRAEFIK_ENV" DOMAIN)"
+    [ -n "$dns_domain" ] || dns_domain="<DOMAIN>"
     if [ -n "$(get_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN)" ]; then
-        echo "  already set (stacks/traefik/.env)"
+        echo "  already set (stacks/traefik/.env): $dns_domain - Zone:Read, DNS:Edit"
     else
         printf '%s\n' \
     '  Needs a Cloudflare API token for DNS-01 wildcard certs.' \
@@ -241,7 +243,7 @@ init:
         printf '\n'
         if [ -n "$token" ]; then
             set_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN "$token"
-            echo "  set"
+            echo "  set: $dns_domain - Zone:Read, DNS:Edit"
         else
             echo "  skipped"
         fi
