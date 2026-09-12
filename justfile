@@ -244,6 +244,16 @@ init:
         if [ -n "$token" ]; then
             set_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN "$token"
             echo "  set: $dns_domain - Zone:Read, DNS:Edit"
+            echo "  verifying with Cloudflare..."
+            if command -v curl >/dev/null 2>&1 && \
+               curl -fsS --connect-timeout 10 --max-time 20 \
+                    "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+                    -H "Authorization: Bearer $token" | grep -q '"status":"active"'; then
+                echo "  verified: token is active"
+            else
+                echo "  WARNING: could not verify the token (offline, wrong paste, or revoked)."
+                echo "           This only checks validity - permissions surface at first cert issuance."
+            fi
         else
             echo "  skipped"
         fi

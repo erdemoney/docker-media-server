@@ -102,7 +102,10 @@ This token *is* the entire Let's Encrypt prerequisite — DNS-01 is how Traefik 
 4. Traefik uses it to create and delete `_acme-challenge` TXT records for `*.DOMAIN` — nothing
    else; those records are short-lived (~120s TTL) and fully automatic.
 
-Verify before first `up`:
+`just init` verifies the token against Cloudflare's `/user/tokens/verify` right after you enter
+it, so a bad paste or a revoked token fails before you ever start the stack. (This only checks the
+token is **valid** — its `Zone:Read`/`DNS:Edit` scope surfaces at first cert issuance, not here.)
+To re-check an already-configured token:
 
 ```bash
 curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
