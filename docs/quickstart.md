@@ -86,7 +86,12 @@ This token *is* the entire Let's Encrypt prerequisite — DNS-01 is how Traefik 
 [Ingress → Certificates](ingress#certificates-automatic).
 
 1. dash.cloudflare.com → **My Profile** → **API Tokens** → **Create Token**.
-2. Use the **Edit zone DNS** template (or custom: Zone → DNS → **Edit** on `DOMAIN`).
+2. **Create custom token** — skip the **Edit zone DNS** template (it only grants `DNS:Edit`).
+   Add two permissions, both on `DOMAIN`:
+   - **Zone → Read** — Traefik must resolve the domain to a **zone ID** before it can edit
+     records; that lookup needs `Zone:Read` even though the token will only ever create
+     `_acme-challenge` TXT records.
+   - **Zone → DNS → Edit** — *the* DNS-01 permission: create and delete those TXT records.
 3. **Zone Resources** → **Include** → **Specific zone** → your `DOMAIN` (least privilege; not
    "All zones"). **Skip Client IP Address Filtering** — your ISP can change your public IP at any
    time, and this token is used from your server's outbound IP: the moment that IP stops matching
