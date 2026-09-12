@@ -17,6 +17,56 @@ init:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # ---- prettier UI: pure ANSI + unicode, plain-text fallback when piped ----
+    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != dumb ]; then
+        B=$'\033[1m'; D=$'\033[2m'; R=$'\033[0m'
+        RED=$'\033[31m'; GRN=$'\033[32m'; YEL=$'\033[33m'
+        MAG=$'\033[35m'; CYN=$'\033[36m'
+    else
+        B=''; D=''; R=''; RED=''; GRN=''; YEL=''; MAG=''; CYN=''
+    fi
+    case "${LC_ALL:-$LANG}" in
+        *[Uu][Tt][Ff]*) G='─'; H='─'; V='│'; TL='╭'; TR='╮'; BL='╰'; BR='╯'
+                        S='▸'; OK='✓'; WARN='⚠'; DONE='✔' ;;
+        *)              G='-'; H='-'; V='|'; TL='+'; TR='+'; BL='+'; BR='+'
+                        S='>'; OK='ok'; WARN='!'; DONE='done' ;;
+    esac
+    RULE=$(printf "$G%.0s" {1..66})
+
+    hr() { printf '%s\n' "${CYN}${RULE}${R}"; }
+    hdr() { hr; printf '%s\n' "  ${B}${CYN}${S} $1${R}"; hr; }
+    chip() { printf '  %s%s%s\n' "$B$MAG" "$1" "$R"; }
+    ok() { printf '  %s%s%s %s\n' "$GRN" "$OK" "$R" "$1"; }
+    warn() { printf '  %s%s%s %s\n' "$YEL" "$WARN" "$R" "$1"; }
+    muted() { printf '  %s%s%s\n' "$D" "$1" "$R"; }
+    ask() { printf '  %s%s%s: ' "$B" "$1" "$R"; }
+    lbl() { printf '%s%s%s' "$B$MAG" "$1" "$R"; }
+    cur() { printf '%s%s%s' "$CYN" "$1" "$R"; }
+    dim() { printf '%s%s%s' "$D" "$1" "$R"; }
+    panel() {   # panel <title> [<line>...]: bordered card emulating the Cloudflare GUI
+        local title="$1"; shift
+        local w="${#title}" line i
+        for line in "$@"; do
+            [ "${#line}" -gt "$w" ] && w="${#line}"
+        done
+        printf '  %s' "$TL"
+        i=0; while [ "$i" -lt "$((w+2))" ]; do printf '%s' "$H"; i=$((i+1)); done
+        printf '%s\n' "$TR"
+        printf '  %s %s%s%s %s\n' "$V" "$B" "$(printf '%-*s' "$w" "$title")" "$R" "$V"
+        printf '  %s %-*s %s\n' "$V" "$w" "" "$V"
+        for line in "$@"; do
+            printf '  %s %-*s %s\n' "$V" "$w" "$line" "$V"
+        done
+        printf '  %s' "$BL"
+        i=0; while [ "$i" -lt "$((w+2))" ]; do printf '%s' "$H"; i=$((i+1)); done
+        printf '%s\n' "$BR"
+    }
+
+    hdr "kickstArrt · just init"
+    muted "Every secret, one at a time  -  safe to re-run, nothing is"
+    muted "overwritten without consent. Written to: stacks/*/.env"
+    echo
+
     TRAEFIK_ENV=stacks/traefik/.env
     CLOUDFLARED_ENV=stacks/cloudflared/.env
     MEDIA_ENV=stacks/media-server/.env
@@ -24,10 +74,10 @@ init:
 
     for s in {{ stack_list }}; do
         if [ -f "stacks/$s/.env" ]; then
-            echo "stacks/$s/.env   already exists (skipping create)"
+            muted "stacks/$s/.env   already exists (skipping create)"
         else
             cp "stacks/$s/.env.example" "stacks/$s/.env"
-            echo "stacks/$s/.env   created from example"
+            ok "stacks/$s/.env   created from example"
         fi
     done
     echo
@@ -70,10 +120,10 @@ init:
     show_or_open_url() {   # GUI: confirm first, then open. No GUI: print URL.
         local url="$1" label="${2:-the page}" yn
         if ! is_gui; then
-            echo "  -> open in a browser: $url"
+            printf '  %s%s%s\n' "$B$CYN" "-> open in a browser: $url" "$R"
             return 0
         fi
-        printf '  Open %s in your browser? [Y/n] ' "$label"
+        printf '  %sOpen %s in your browser? [%sY%s/n] ' "$B" "$label" "$GRN" "$R"
         read -r yn || yn=""
         printf '\n'
         case "$yn" in
@@ -85,10 +135,10 @@ init:
                     open "$url" >/dev/null 2>&1 &
                     disown || true
                 else
-                    echo "  -> open in a browser: $url"
+                    printf '  %s%s%s\n' "$B$CYN" "-> open in a browser: $url" "$R"
                 fi
                 ;;
-            *) echo "  -> open in a browser: $url" ;;
+            *) printf '  %s%s%s\n' "$B$CYN" "-> open in a browser: $url" "$R" ;;
         esac
     }
 
@@ -96,11 +146,11 @@ init:
         local file="$1" var="$2" hint="${3:-}" norm="${4:-}" cur ans
         cur=$(get_var "$file" "$var") || true
         if [ -n "$cur" ]; then
-            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            printf '  %s [%s, %s] > ' "$(lbl "$var")" "$(cur "$cur")" "$(dim "Enter to keep")"
         elif [ -n "$hint" ]; then
-            printf '  %s [%s] > ' "$var" "$hint"
+            printf '  %s [%s] > ' "$(lbl "$var")" "$(dim "$hint")"
         else
-            printf '  %s > ' "$var"
+            printf '  %s > ' "$(lbl "$var")"
         fi
         read -r ans || ans=""
         if [ -n "$ans" ]; then
@@ -117,10 +167,10 @@ init:
         local file="$1" var="$2" def="$3" cur ans   # DEFAULT on Enter instead of staying empty
         cur=$(get_var "$file" "$var") || true
         if [ -n "$cur" ]; then
-            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            printf '  %s [%s, %s] > ' "$(lbl "$var")" "$(cur "$cur")" "$(dim "Enter to keep")"
             read -r ans || ans=""
         else
-            printf '  %s [%s, Enter to use] > ' "$var" "$def"
+            printf '  %s [%s, %s] > ' "$(lbl "$var")" "$(cur "$def")" "$(dim "Enter to use")"
             read -r ans || ans=""
             [ -z "$ans" ] && ans="$def"
         fi
@@ -146,13 +196,13 @@ init:
         local file="$1" var="$2" def="$3" cur ans   # unset or still the example 1000
         cur=$(get_var "$file" "$var") || true
         if [ "$cur" = "1000" ] || [ -z "$cur" ]; then
-            printf '  %s [%s, Enter to use] > ' "$var" "$def"
+            printf '  %s [%s, %s] > ' "$(lbl "$var")" "$(cur "$def")" "$(dim "Enter to use")"
             read -r ans || ans=""
             if [ -z "$ans" ]; then
                 ans="$def"
             fi
         else
-            printf '  %s [%s, Enter to keep] > ' "$var" "$cur"
+            printf '  %s [%s, %s] > ' "$(lbl "$var")" "$(cur "$cur")" "$(dim "Enter to keep")"
             read -r ans || ans=""
         fi
         if [ -n "$ans" ] && [ "$ans" != "$cur" ]; then
@@ -165,16 +215,17 @@ init:
     # The tracked traefik config, the app state and the restic backup scope all live
     # there, so pointing it elsewhere would silently split them apart.
     CONFIG_DIR_VALUE="$(abs_path "{{ justfile_directory() }}/data")"
-    echo "== Config directory =="
-    echo "  $CONFIG_DIR_VALUE (fixed - app configs, acme.json and traefik's config live here)"
+    hdr "Config directory"
+    printf '  %s %s\n' "$(cur "$CONFIG_DIR_VALUE")" "(fixed - app configs, acme.json and traefik's config live here)"
     set_all CONFIG_DIR "$CONFIG_DIR_VALUE"
+    muted "synced to stacks/*/.env"
     echo
 
-    echo "== Domain and paths (shared across stacks) =="
+    hdr "Domain and paths (shared across stacks)"
     prompt_value "$TRAEFIK_ENV" DOMAIN "your domain, e.g. example.com"
     echo
 
-    echo "== traefik =="
+    hdr "traefik"
     prompt_value "$TRAEFIK_ENV" SUB_DOMAIN_TRAEFIK
     # Let's Encrypt only needs a syntactically valid contact on a real domain - it stopped
     # sending mail in June 2025 and no longer stores the address, so it does not have to be
@@ -187,23 +238,24 @@ init:
     prompt_default "$TRAEFIK_ENV" ACME_EMAIL "admin@$(get_var "$TRAEFIK_ENV" DOMAIN)"
     echo
 
-    echo "CROWDSEC_BOUNCER_API_KEY"
+    chip "CROWDSEC_BOUNCER_API_KEY"
     if [ -n "$(get_var "$TRAEFIK_ENV" CROWDSEC_BOUNCER_API_KEY)" ]; then
-        echo "  already set (stacks/traefik/.env)"
+        ok "already set (stacks/traefik/.env)"
     else
         set_var "$TRAEFIK_ENV" CROWDSEC_BOUNCER_API_KEY "$(openssl rand -hex 32)"
-        echo "  generated a random 32-byte key"
+        ok "generated a random 32-byte key"
     fi
     echo
 
-    echo "TRAEFIK_DASHBOARD_CREDENTIALS"
+    chip "TRAEFIK_DASHBOARD_CREDENTIALS"
     if [ -n "$(get_var "$TRAEFIK_ENV" TRAEFIK_DASHBOARD_CREDENTIALS)" ]; then
-        echo "  already set (stacks/traefik/.env)"
+        ok "already set (stacks/traefik/.env)"
     else
-        echo "  htpasswd-style user:hash for the Traefik dashboard (blank password = generate nothing, username defaults to admin)."
-        printf '  dashboard username (default admin): '
+        muted "htpasswd-style user:hash for the Traefik dashboard (blank password ="
+        muted "generate nothing, username defaults to admin)."
+        ask "dashboard username (default admin)"
         read -r dash_user || dash_user=""
-        printf '  dashboard password (hidden): '
+        ask "dashboard password (hidden)"
         read -rs dash_pass || dash_pass=""
         printf '\n'
         [ -n "$dash_user" ] || dash_user="admin"
@@ -213,57 +265,55 @@ init:
             *) hash=$(docker run --rm httpd:2.4-alpine htpasswd -nbB "$dash_user" "$dash_pass" | cut -d: -f2) ;;
         esac
         set_var "$TRAEFIK_ENV" TRAEFIK_DASHBOARD_CREDENTIALS "'$dash_user:$hash'"
-        echo "  set (single-quoted so compose doesn't eat the hash)"
+        ok "set (single-quoted so compose doesn't eat the hash)"
     fi
     echo
 
-    echo "CLOUDFLARE_DNS_TOKEN"
+    chip "CLOUDFLARE_DNS_TOKEN"
     dns_domain="$(get_var "$TRAEFIK_ENV" DOMAIN)"
     [ -n "$dns_domain" ] || dns_domain="<DOMAIN>"
     if [ -n "$(get_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN)" ]; then
-        echo "  already set (stacks/traefik/.env): $dns_domain - Zone:Read, DNS:Edit"
+        ok "already set (stacks/traefik/.env): $dns_domain - Zone:Read, DNS:Edit"
     else
-        printf '%s\n' \
-    '  Needs a Cloudflare API token for DNS-01 wildcard certs.' \
-    '  Create it (dash.cloudflare.com -> My Profile -> API Tokens ->' \
-    '    Create Custom Token), mirroring the dashboard values:' \
-    '    Permissions:' \
-    '      Zone -> Zone -> Read' \
-    '      Zone -> DNS -> Edit' \
-    '    Zone Resources:' \
-    '      Include -> Specific zone -> <DOMAIN>' \
-    '    Client IP Address Filtering:' \
-    '      skip - your ISP can change your public IP and break renewals' \
-    '      (see docs/quickstart.md)' \
-    '    TTL: optional' \
-    '  Paste it below (hidden). Leave empty to skip; set it later.'
+        muted "Create it: dash.cloudflare.com -> My Profile -> API Tokens -> Create Custom Token"
+        panel "Create Custom Token" \
+            "Permissions:" \
+            "  Zone -> Zone -> Read" \
+            "  Zone -> DNS -> Edit" \
+            "Zone Resources:" \
+            "  Include -> Specific zone -> <DOMAIN>" \
+            "Client IP Address Filtering:" \
+            "  skip - your ISP can change your public IP and break renewals" \
+            "  (see docs/quickstart.md)" \
+            "TTL: optional"
+        muted "Paste it below (hidden). Leave empty to skip; set it later."
         show_or_open_url "https://dash.cloudflare.com/profile/api-tokens"
-        printf '  CLOUDFLARE_DNS_TOKEN (hidden): '
+        ask "CLOUDFLARE_DNS_TOKEN (hidden)"
         read -rs token || token=""
         printf '\n'
         if [ -n "$token" ]; then
             set_var "$TRAEFIK_ENV" CLOUDFLARE_DNS_TOKEN "$token"
-            echo "  set: $dns_domain - Zone:Read, DNS:Edit"
-            echo "  verifying with Cloudflare..."
+            ok "set: $dns_domain - Zone:Read, DNS:Edit"
+            muted "verifying with Cloudflare..."
             if command -v curl >/dev/null 2>&1 && \
                curl -fsS --connect-timeout 10 --max-time 20 \
                     "https://api.cloudflare.com/client/v4/user/tokens/verify" \
                     -H "Authorization: Bearer $token" | grep -q '"status":"active"'; then
-                echo "  verified: token is active"
+                ok "verified: token is active"
             else
-                echo "  WARNING: could not verify the token (offline, wrong paste, or revoked)."
-                echo "           This only checks validity - permissions surface at first cert issuance."
+                warn "could not verify the token (offline, wrong paste, or revoked)."
+                muted "This only checks validity - permissions surface at first cert issuance."
             fi
         else
-            echo "  skipped"
+            muted "skipped"
         fi
     fi
     echo
 
-    echo "== cloudflared =="
-    echo "CLOUDFLARE_TUNNEL_TOKEN"
+    hdr "cloudflared"
+    chip "CLOUDFLARE_TUNNEL_TOKEN"
     if [ -n "$(get_var "$CLOUDFLARED_ENV" CLOUDFLARE_TUNNEL_TOKEN)" ]; then
-        echo "  already set (stacks/cloudflared/.env)"
+        ok "already set (stacks/cloudflared/.env)"
     else
         printf '%s\n' \
     '  Needs a Cloudflare Tunnel token for WAN ingress.' \
@@ -271,24 +321,24 @@ init:
     '    2. Create a tunnel (Type: Cloudflared) and copy its token.' \
     '    3. Paste it below (hidden). Leave empty to skip; set it later.'
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/tunnels"
-        printf '  CLOUDFLARE_TUNNEL_TOKEN (hidden): '
+        ask "CLOUDFLARE_TUNNEL_TOKEN (hidden)"
         read -rs token || token=""
         printf '\n'
         if [ -n "$token" ]; then
             set_var "$CLOUDFLARED_ENV" CLOUDFLARE_TUNNEL_TOKEN "$token"
-            echo "  set"
+            ok "set"
         else
-            echo "  skipped"
+            muted "skipped"
         fi
     fi
     echo
 
-    echo "== media-server =="
+    hdr "media-server"
     sid=$(id -u); sgid=$(id -g)
     if [ "$sid" -eq 0 ]; then
         sid=1000; sgid=1000
-        echo "  (running as root - proposing 1000:1000 so containers don't run as root;"
-        echo "   re-run as your deploy user to use its uid/gid)"
+        muted "(running as root - proposing 1000:1000 so containers don't run as root;"
+        muted "re-run as your deploy user to use its uid/gid)"
     fi
     prompt_id "$MEDIA_ENV" ENV_PUID "$sid"
     prompt_id "$MEDIA_ENV" ENV_PGID "$sgid"
@@ -298,69 +348,67 @@ init:
     done
     echo
 
-    echo "== restic backups (optional) =="
+    hdr "restic backups (optional)"
     BACKUP_ENV=.env.restic
     if [ ! -f "$BACKUP_ENV" ]; then
         cp .env.restic.example .env.restic
-        echo "created $BACKUP_ENV from .env.restic.example"
+        ok "created $BACKUP_ENV from .env.restic.example"
     fi
     if [ -n "$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)" ] && [ -n "$(get_var "$BACKUP_ENV" RESTIC_PASSWORD)" ]; then
-        echo "  already configured ($(get_var "$BACKUP_ENV" RESTIC_REPOSITORY))"
+        ok "already configured ($(get_var "$BACKUP_ENV" RESTIC_REPOSITORY))"
     else
-        printf '%s\n' \
-    '  Back up this repo (all .env files + data/) to an encrypted restic repository in' \
-    '  Cloudflare R2 (this stack lives on Cloudflare). Restic runs in a container.' \
-    '  Create the token at R2 -> Manage R2 API Tokens -> Create API token,' \
-    '  mirroring the dashboard values:' \
-    '    Token name:' \
-    '      anything (e.g. kickstarrt-restic)' \
-    '    Permissions:' \
-    '      Object -> Read & Write' \
-    '    Specify bucket(s):' \
-    '      Apply to specific buckets only -> <BUCKET>' \
-    '    TTL: optional' \
-    '    Client IP Address Filtering:' \
-    '      skip - your ISP can change your public IP and break backups' \
-    '      (see docs/maintenance.md)' \
-    '  Want a different backend? Edit RESTIC_REPOSITORY + creds in' \
-    "  .env.restic - that's the only supported deviation."
+        muted "Back up this repo (all .env files + data/) to an encrypted restic repository"
+        muted "in Cloudflare R2 (this stack lives on Cloudflare); restic runs in a container."
+        panel "Create API token" \
+            "Token name:" \
+            "  anything (e.g. kickstarrt-restic)" \
+            "Permissions:" \
+            "  Object -> Read & Write" \
+            "Specify bucket(s):" \
+            "  Apply to specific buckets only -> <BUCKET>" \
+            "TTL: optional" \
+            "Client IP Address Filtering:" \
+            "  skip - your ISP can change your public IP and break backups" \
+            "  (see docs/maintenance.md)"
+        muted "Different backend? Edit RESTIC_REPOSITORY + creds in .env.restic -"
+        muted "that's the only supported deviation. The values are prompted below."
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/overview" "the R2 overview"
         show_or_open_url "https://dash.cloudflare.com/?to=/:account/r2/api-tokens" "the R2 API tokens page"
-        printf '  Configure R2 restic backups now? [y/N] '
+        ask "Configure R2 restic backups now? [y/N]"
         read -r yes_backup || yes_backup=""
         case "$yes_backup" in
         y|Y|yes|Yes|YES)
             cur_act=$(get_var "$BACKUP_ENV" R2_ACCOUNT_ID) || true
             if [ -n "$cur_act" ]; then
-                printf '  R2 Account ID [%s, Enter to keep] > ' "$cur_act"
+                printf '  %s [%s, %s] > ' "$(lbl "R2 Account ID")" "$(cur "$cur_act")" "$(dim "Enter to keep")"
             else
-                printf '  R2 Account ID (R2 page, scroll down: Usage -> Account Details) > '
+                printf '  %s [%s] > ' "$(lbl "R2 Account ID")" "$(dim "R2 page, scroll down: Usage -> Account Details")"
             fi
             read -r acct || acct=""
             [ -n "$acct" ] && set_var "$BACKUP_ENV" R2_ACCOUNT_ID "$acct"
 
             cur_bkt=$(get_var "$BACKUP_ENV" R2_BUCKET) || true
             if [ -n "$cur_bkt" ]; then
-                printf '  R2 bucket name [%s, Enter to keep] > ' "$cur_bkt"
+                printf '  %s [%s, %s] > ' "$(lbl "R2 bucket name")" "$(cur "$cur_bkt")" "$(dim "Enter to keep")"
             else
-                printf '  R2 bucket name (R2 dashboard -> Create bucket) > '
+                printf '  %s [%s] > ' "$(lbl "R2 bucket name")" "$(dim "R2 dashboard -> Create bucket")"
             fi
             read -r bkt || bkt=""
             [ -n "$bkt" ] && set_var "$BACKUP_ENV" R2_BUCKET "$bkt"
 
             cur_key=$(get_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID) || true
             if [ -n "$cur_key" ]; then
-                printf '  R2 Access Key ID [%s, Enter to keep] > ' "$cur_key"
+                printf '  %s [%s, %s] > ' "$(lbl "R2 Access Key ID")" "$(cur "$cur_key")" "$(dim "Enter to keep")"
             else
-                printf '  R2 Access Key ID (Manage R2 API Tokens) > '
+                printf '  %s [%s] > ' "$(lbl "R2 Access Key ID")" "$(dim "Manage R2 API Tokens")"
             fi
             read -r akey || akey=""
             [ -n "$akey" ] && set_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID "$akey"
 
             if [ -n "$(get_var "$BACKUP_ENV" AWS_SECRET_ACCESS_KEY)" ]; then
-                printf '  R2 Secret Access Key [hidden, Enter to keep] > '
+                printf '  %s [%s, %s] > ' "$(lbl "R2 Secret Access Key")" "$(dim "hidden")" "$(dim "Enter to keep")"
             else
-                printf '  R2 Secret Access Key (hidden, same page) > '
+                printf '  %s [%s] > ' "$(lbl "R2 Secret Access Key")" "$(dim "hidden, same page")"
             fi
             read -rs skey || skey=""
             printf '\n'
@@ -373,22 +421,26 @@ init:
                 set_var "$BACKUP_ENV" RESTIC_REPOSITORY "s3:https://$acct.r2.cloudflarestorage.com/$bkt"
             fi
 
-            printf '  RESTIC_PASSWORD (hidden, blank to skip) > '
+            ask "RESTIC_PASSWORD (hidden, blank to skip)"
             read -rs rpw || rpw=""
             printf '\n'
             [ -n "$rpw" ] && set_var "$BACKUP_ENV" RESTIC_PASSWORD "$rpw"
             if [ -n "$(get_var "$BACKUP_ENV" RESTIC_REPOSITORY)" ] && [ -n "$(get_var "$BACKUP_ENV" RESTIC_PASSWORD)" ]; then
-                echo "  restic configured (R2) - next: 'just backup-init', then 'just backup'."
+                ok "restic configured (R2) - next: 'just backup-init', then 'just backup'."
             else
-                echo "  left incomplete - fill RESTIC_REPOSITORY + RESTIC_PASSWORD in .env.restic later."
+                warn "left incomplete - fill RESTIC_REPOSITORY + RESTIC_PASSWORD in .env.restic later."
             fi
             ;;
-        *) echo "  skipped - fill .env.restic later and run 'just backup-init'." ;;
+        *) muted "skipped - fill .env.restic later and run 'just backup-init'." ;;
         esac
     fi
     echo
 
-    echo "done. Review stacks/*/.env, then run 'just up'."
+    hr
+    printf '%s\n' "  ${B}${GRN}${DONE}${R} ${B}init complete${R}"
+    muted "Review stacks/*/.env, then run 'just up'."
+    muted "The stack stays LAN-only until you expose it (docs/ingress.md)."
+    hr
 
 # Create the shared Docker networks (idempotent)
 networks:
