@@ -348,13 +348,13 @@ init:
             read -r bkt || bkt=""
             [ -n "$bkt" ] && set_var "$BACKUP_ENV" R2_BUCKET "$bkt"
 
-            if [ -n "$(get_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID)" ]; then
-                printf '  R2 Access Key ID [hidden, Enter to keep] > '
+            cur_key=$(get_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID) || true
+            if [ -n "$cur_key" ]; then
+                printf '  R2 Access Key ID [%s, Enter to keep] > ' "$cur_key"
             else
-                printf '  R2 Access Key ID (hidden, Manage R2 API Tokens) > '
+                printf '  R2 Access Key ID (Manage R2 API Tokens) > '
             fi
-            read -rs akey || akey=""
-            printf '\n'
+            read -r akey || akey=""
             [ -n "$akey" ] && set_var "$BACKUP_ENV" AWS_ACCESS_KEY_ID "$akey"
 
             if [ -n "$(get_var "$BACKUP_ENV" AWS_SECRET_ACCESS_KEY)" ]; then
