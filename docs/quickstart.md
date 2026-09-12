@@ -87,7 +87,13 @@ This token *is* the entire Let's Encrypt prerequisite — DNS-01 is how Traefik 
 
 1. dash.cloudflare.com → **My Profile** → **API Tokens** → **Create Token**.
 2. Use the **Edit zone DNS** template (or custom: Zone → DNS → **Edit** on `DOMAIN`).
-3. Traefik uses it to create `_acme-challenge` TXT records for `*.DOMAIN` — nothing else.
+3. **Zone Resources** → **Include** → **Specific zone** → your `DOMAIN` (least privilege; not
+   "All zones"). Leave **Client IP Address Filtering** off — the token is used **from the server's
+   outbound IP**, and if you pin that IP an otherwise-dynamic home WAN address will silently break
+   every ACME renewal when it changes. (Don't pick "Is not in · Use my IP" either — that only
+   blocks your own current browser IP and secures nothing.) **TTL**: API tokens have no TTL to set.
+4. Traefik uses it to create and delete `_acme-challenge` TXT records for `*.DOMAIN` — nothing
+   else; those records are short-lived (~120s TTL) and fully automatic.
 
 Verify before first `up`:
 
